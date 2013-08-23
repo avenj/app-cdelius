@@ -8,7 +8,7 @@ sub import {
   push @{ $_[1] ||= [] }, (
     'Path::Tiny'              => [ 'path' ],
     'App::cdelius::Types'     => [ -all ],
-    'App::cdelius::Exception' => [ 'exception' ],
+    'App::cdelius::Exception' => [ 'throw' ],
   );
   goto \&MoopsX::ListObjects::import
 }

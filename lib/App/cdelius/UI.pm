@@ -64,8 +64,7 @@ class TrackList :ro {
     Int :$to_index
   ) {
     my $track = $self->del_track($from_index)
-    # FIXME exception objs
-      or die "No such track: $from_index";
+      or throw "No such track: $from_index";
     $self->add_track(track => $track, position => $to_index)
   }
 }
