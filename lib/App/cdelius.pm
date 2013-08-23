@@ -153,5 +153,10 @@ class Burner :ro {
 }
 
 
+class UserInterface {
+  # FIXME require ::UI, glue everything together, return
+  # appropriate interface obj
+}
+
 
 1;

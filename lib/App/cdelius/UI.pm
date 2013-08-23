@@ -17,6 +17,7 @@ class Track :ro {
 
 }
 
+
 class TrackList :ro {
 
   has _tracks => (
@@ -26,6 +27,10 @@ class TrackList :ro {
     writer  => '_set_tracks',
   );
 
+  method all {
+    $self->_tracks->all
+  }
+
   method get_track ($self:
     Int :$position
   ) {
@@ -34,7 +39,7 @@ class TrackList :ro {
 
   method add_track ($self:
     Object :$track,
-    Int :$position = undef
+    (Int|Undef) :$position = undef
   ) {
     unless (defined $position) {
       $self->_tracks->push( $track );
@@ -65,8 +70,10 @@ class TrackList :ro {
   }
 }
 
+
 class Cmd {
 
+    # FIXME
 }
 
 1;
