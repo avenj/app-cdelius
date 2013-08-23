@@ -3,17 +3,22 @@ use App::cdelius::Moops;
 
 class Config :ro {
 
+  has wav_dir => (
+    isa       => Str,
+    default   => sub { '/tmp/cdelius' },
+  );
+
   has ffmpeg_path => (
     isa       => Str,
     default   => sub { '/usr/bin/ffmpeg' },
   );
 
-  has ffmpeg_global_opts  => ( 
+  has ffmpeg_global_opts => ( 
     isa     => Str,
     default => sub { '' },
   );
 
-  has ffmpeg_infile_opts  => (
+  has ffmpeg_infile_opts => (
     isa     => Str,
     default => sub { '' },
   );
