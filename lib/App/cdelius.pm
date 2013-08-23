@@ -1,16 +1,74 @@
 package App::cdelius;
 use App::cdelius::Moops;
 
-
 class Config :ro {
-  # FIXME just prototyped for now
-  has ffmpeg_path => ();
-  has ffmpeg_global_opts  => ( isa => ImmutableArray );
-  has ffmpeg_infile_opts  => ( isa => ImmutableArray );
-  has ffmpeg_outfile_opts => ( isa => ImmutableArray );
 
-  has cdrecord_path => ();
-  has cdrecord_opts => ();
+  has ffmpeg_path => (
+    isa       => Str,
+    default   => sub { '/usr/bin/ffmpeg' },
+  );
+
+  has ffmpeg_global_opts  => ( 
+    isa     => Str,
+    default => sub { '' },
+  );
+
+  has ffmpeg_infile_opts  => (
+    isa     => Str,
+    default => sub { '' },
+  );
+
+  has ffmpeg_outfile_opts => (
+    isa     => Str,
+    default => sub { '' },
+  );
+
+  has cdrecord_path => (
+    isa      => Str,
+    default  => sub { '/usr/bin/cdrecord' },
+  );
+
+  has cdrecord_opts => (
+    isa      => Str,
+    default  => sub { '-vv -audio -pad speed=16' },
+  );
+
+  method from_yaml ($class: 
+    :$path
+  ) {
+    require YAML::Tiny;
+
+    $path = path($path) unless is_PathTiny($path);
+    die "No such file $path" unless $path->exists;
+
+    my $yml = YAML::Tiny->new->read("$path");
+
+    $class->new( %{ $yml->[0] } )
+  }
+
+  method to_yaml ($self:
+    :$path,
+    :$data = undef
+  ) {
+    require YAML::Tiny;
+    my $yml = YAML::Tiny->new;
+
+    $yml->[0] = $data ? $data : +{ %$self };
+
+    $yml->write("$path")
+  }
+
+  method write_new_config($self:
+    :$path,
+    :$force = 0
+  ) {
+    $path = path($path) unless is_PathTiny($path);
+    die "File already exists at $path" if $path->exists and !$force;
+    my $class = blessed($self) || $self;
+    my $new = $class->new; 
+    $new->to_yaml(path => $path)
+  }
+
 }
 
 
@@ -58,23 +116,32 @@ class Burner :ro {
 
   has cdrecord => (
     isa      => PathTiny,
+    coerce   => 1,
     required => 1,
   );
 
   has cdrecord_opts => (
-    isa      => ArrayObj,
-    coerce   => 1,
-    default  => sub {
-      [qw/ -v -audio -pad speed=16 /],
-    },
+    isa      => Str,
+    required => 1,
   );
 
   method burn_cd( $self:
     PathTiny :$wavdir
   ) {
     my $cdr  = $self->cdrecord;
-    my @opts = $self->cdrecord_opts->all;
-    # FIXME iterate $wavdir, find tracks
+    my @opts = split ' ', $self->cdrecord_opts;
+
+    confess "No such directory $wavdir"
+      unless $wavdir->exists;
+
+    my @tracks;
+    for my $chld ($wavdir->children) {
+      push @tracks, $chld if $chld =~ /\.wav$/;
+    }
+
+    confess "No files present under $wavdir"
+      unless @tracks;
+
     system($cdr, @opts, @tracks) 
   }
   
