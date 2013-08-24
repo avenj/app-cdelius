@@ -1,7 +1,7 @@
 package App::cdelius;
 use strictures 1;
 
-use Function::Parameters;
+#use Function::Parameters;
 use Types::Standard -types;
 
 use App::cdelius::Component;
