@@ -26,14 +26,21 @@ class Track :ro {
 class TrackList :ro {
 
   has _tracks => (
-    isa     => ArrayObj,
-    coerce  => 1,
-    default => sub { [] },
-    writer  => '_set_tracks',
+    isa       => ArrayObj,
+    coerce    => 1,
+    default   => sub { [] },
+    writer    => '_set_tracks',
+    init_arg  => 'init_tracks',
   );
 
-  method all {
-    $self->_tracks->all
+  define INITIAL_TRACK = 1000;
+
+  method all { $self->_tracks->all }
+
+  method shuffled {
+    blessed($self)->new(
+      init_tracks => [ $self->_tracks->shuffle->all ]
+    )
   }
 
   method get_track ($self:
@@ -46,7 +53,6 @@ class TrackList :ro {
     TrackObj :$track,
     (Int | Undef) :$position = undef
   ) {
-    # FIXME check for track $name?
     unless (defined $position) {
       $self->_tracks->push( $track );
       return $self->_tracks->count - 1
@@ -74,9 +80,10 @@ class TrackList :ro {
     $self->add_track(track => $track, position => $to_index)
   }
 
-  method decode_to ($self:
-    ConfigObj :$config,
-    Bool      :$verbose = 0
+  method decode ($self:
+    ConfigObj        :$config,
+    (Str | PathTiny) :$wav_dir = '',
+    Bool             :$verbose = 0
   ) {
 
     my $decoder = App::cdelius::Backend::Decoder->new(
@@ -88,13 +95,18 @@ class TrackList :ro {
       ),
     );
 
-    my $wav_dir = path( $config->wav_dir );
+    $wav_dir = $wav_dir ?
+      path("$wav_dir") : path( $config->wav_dir );
+
     $wav_dir->mkpath unless $wav_dir->exists;
 
-    my $tnum = 1000;
+    my $tnum = INITIAL_TRACK;
     for my $track ($self->all) {
+      ++$tnum;
+
       my $name    = $track->name;
       my $outfile = "${wav_dir}/${tnum}_${name}.wav";
+
       $decoder->decode_track(
         input  => path( $track->path ),
         output => path( $outfile ),
@@ -110,9 +122,9 @@ class TrackList :ro {
         ),
       );
 
-      ++$tnum
     }
 
+    return $tnum - INITIAL_TRACK
   }
 
 }
