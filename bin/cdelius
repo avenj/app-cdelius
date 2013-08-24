@@ -1,0 +1,138 @@
+#!perl
+use strictures 1;
+
+use v5.14;
+use IO::Handle;
+use List::Objects::WithUtils;
+
+my $opts = +{
+  help => sub {
+  },
+
+  version => sub {
+  },
+
+  config  => do {
+    $ENV{HOME} ? $ENV{HOME} ."/.cdeliusrc"
+      : "cdeliusrc";
+    },
+
+  nocolor => 0,
+};
+
+use Getopt::Long;
+GetOptions( $opts,
+  qw/
+    help
+    version
+
+    config=s
+
+    nocolor=i
+  /,
+);
+
+$opts = hash(%$opts)->inflate;
+
+use App::cdelius;
+use App::cdelius::Types;
+
+use Term::UI;
+use Term::ReadLine;
+use Text::ParseWords 'parse_line';
+
+my $term   = Term::ReadLine->new('cdelius');
+my $outfh  = $term->OUT || \*STDOUT;
+$outfh->autoflush(1);
+
+$outfh->say("Welcome to cdelius!\n");
+
+unless (-e $opts->config) {
+  my $should_create = $term->ask_yn(
+    print_me =>
+      ">>> No such file: ".$opts->config,
+    prompt => 
+      "Would you like to initialize a new configuration file?",
+    default => 'y',
+  );
+
+  if ($should_create) {
+    $outfh->print(" ... creating ".$opts->config);
+    App::cdelius::Backend::Config->write_new_config(
+      path => $opts->config
+    );
+    $outfh->print(" ... done\n");
+  } else {
+    $outfh->say(">> Continuing with defaults ...");
+  }
+}
+
+my $cdel = App::cdelius->new(
+  config_file_path => $opts->{config},
+);
+
+
+
+PROMPT: while (1) {
+  my $prompt = "cd> ";
+  my $cmd    = $term->get_reply(
+    prompt  => $prompt,
+    default => 'help',
+  );
+
+  if ($cmd) {
+    $term->addhistory($cmd);
+
+    my ($cmdopts, $parsedcmd) = $term->parse_options($cmd);
+    my ($thiscmd, @remain)  = parse_line('\s+', 0, $parsedcmd);
+    dispatch( $thiscmd =>
+      hash(%$cmdopts),
+      array(@remain)
+    ) if $thiscmd;
+  }
+}
+
+sub dispatch {
+  my ($thiscmd, $cmdopts, $args) = @_;
+
+  confess "Expected HashObj but got $cmdopts"
+    unless is_HashObj $cmdopts;
+  confess "Expected ArrayObj but got $args"
+    unless is_ArrayObj $args;
+
+  my $subname = 'cmd_'.$thiscmd;
+  my $code;
+  unless ($code = __PACKAGE__->can($subname)) {
+    $outfh->say("Unknown command $thiscmd, try 'help'");
+    return
+  }
+
+  $code->($cmdopts, $args)
+}
+
+sub cmd_h    { goto \&cmd_help }
+sub cmd_help {
+}
+
+sub cmd_q    { goto \&cmd_quit }
+sub cmd_quit {
+}
+
+sub cmd_list {
+}
+
+sub cmd_add {
+}
+
+sub cmd_del    { goto \&cmd_delete }
+sub cmd_delete {
+}
+
+sub cmd_move {
+}
+
+sub cmd_load {
+}
+
+
+# vim: ts=2 sw=2 et sts=2 ft=perl
