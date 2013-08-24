@@ -1,12 +1,16 @@
 package App::cdelius;
-use strictures 1;
-
-#use Function::Parameters;
-use Types::Standard -types;
+use Defaults::Modern;
 
 use App::cdelius::Component;
 
+use Types::Standard -types;
 use Moo;
+
+has factory => (
+  is        => 'ro',
+  isa       => InstanceOf['App::cdelius::Component'],
+  default   => sub { App::cdelius::Component->new },
+);
 
 has config_file_path => (
   required  => 1,
@@ -19,7 +23,10 @@ has config => (
   is        => 'ro',
   isa       => InstanceOf['App::cdelius::Backend::Config'],
   default   => sub {
-    # FIXME config load (use ::Component)
+    my ($self) = @_;
+    $self->factory->build('Backend::Config')->from_yaml(
+      path => $self->config_file_path
+    )
   }
 );
 
@@ -28,7 +35,8 @@ has tracklist => (
   is        => 'ro',
   isa       => InstanceOf['App::cdelius::UI::TrackList'],
   default   => sub {
-    # FIXME spawn tracklist (use ::Component)
+    my ($self) = @_;
+    $self->factory->build( 'UI::TrackList' )
   },
 );
 
