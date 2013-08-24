@@ -3,10 +3,27 @@ package App::cdelius::UI;
 use App::cdelius::Moops;
 use App::cdelius::Backend;
 
-class Track :ro {
+role JSON {
+  method TO_JSON {
+    my ($self) = @_;
+
+    # Lowu hash()es provide a TO_JSON:
+    my $data = hash(%$self);
+    for my $key ($data->keys->all) {
+      # un-bless Path::Tiny objs
+      my $val = $data->get($key);
+      $data->set($key => "$val") if is_PathTiny $val;
+    }
+
+    $data
+  }
+}
+
+class Track with JSON :ro {
 
   has path => (
     isa       => PathTiny,
+    coerce    => 1,
     required  => 1,
   );
 
@@ -23,7 +40,16 @@ class Track :ro {
 }
 
 
-class TrackList :ro {
+class TrackList with JSON :ro {
+
+  has path => (
+    isa       => PathTiny,
+    coerce    => 1,
+    lazy      => 1,
+    writer    => 'set_path',
+    predicate => 'has_path',
+    default   => sub { '' },
+  );
 
   has _tracks => (
     isa       => ArrayObj,
@@ -43,14 +69,56 @@ class TrackList :ro {
     )
   }
 
-  method get_track ($self:
-    Int :$position
+  method save (
+    (Str | Undef) :$path = undef,
   ) {
-    return $self->_tracks->get($position)
+
+    $path = 
+      $path ? path($path)
+      : $self->has_path ? $self->path
+      : throw "No 'path =>' specified and no '->path' attrib available";
+
+    require JSON::Tiny;
+    my $enc = JSON::Tiny->new;
+    my $json;
+    unless ($json = $enc->encode($self)) {
+      throw "JSON encoding failed; ".$enc->error
+    }
+
+    $path->spew_utf8($json);
   }
 
-  method add_track ($self:
-    TrackObj :$track,
+  method load ( $class:
+    (Str | PathTiny) :$path,
+  ) {
+    $path = path("$path") unless is_PathTiny $path;
+
+    my $json = $path->slurp_utf8;
+
+    require JSON::Tiny;
+    my $enc = JSON::Tiny->new;
+    my $data;
+    unless ($data = $enc->decode($json)) {
+      throw "JSON decoding failed; ".$enc->error
+    }
+    
+    my $tlist = delete $data->{_tracks};
+    unless (is_ArrayRef $tlist) {
+      throw "Expected tracklist to be an ARRAY but got $tlist"
+    }
+
+    App::cdelius::UI::TrackList->new(
+      init_tracks => $tlist,
+      path        => "$path",
+    )
+  }
+
+  method get_track (Int :$position) { 
+    $self->_tracks->get($position)
+  }
+
+  method add_track (
+    TrackObj      :$track,
     (Int | Undef) :$position = undef
   ) {
     unless (defined $position) {
@@ -61,9 +129,7 @@ class TrackList :ro {
     return $position
   }
 
-  method del_track ($self:
-    Int :$position
-  ) {
+  method del_track (Int :$position) {
     $self->_set_tracks(
       $self->_tracks->sliced( 
         0 .. ($position - 1), ($position + 1) .. ($self->_tracks->count - 1)
@@ -71,16 +137,13 @@ class TrackList :ro {
     )
   }
 
-  method move_track ($self:
-    Int :$from_index,
-    Int :$to_index
-  ) {
+  method move_track (Int :$from_index, Int :$to_index) {
     my $track = $self->del_track(position => $from_index)
       or throw "No such track: $from_index";
     $self->add_track(track => $track, position => $to_index)
   }
 
-  method decode ($self:
+  method decode (
     ConfigObj        :$config,
     (Str | PathTiny) :$wav_dir = '',
     Bool             :$verbose = 0
@@ -124,64 +187,32 @@ class TrackList :ro {
 
     }
 
-    return $tnum - INITIAL_TRACK
+    $tnum - INITIAL_TRACK
   }
 
-}
-
-
-class Session :ro {
-
-  has path      => (
-    isa       => PathTiny,
-    coerce    => 1,
-    required  => 1,
-  );
-
-  has name      => (
-    isa       => Str,
-    required  => 1,
-  );
-
-  has tracklist => (
-    isa       => Object,
-    is        => 'rwp',
-    lazy      => 1
-  );
-
-  has _fh => (
-    isa       => FileHandle,
-    lazy      => 1,
-    writer    => '_set_fh',
-    clearer   => '_clear_fh',
-    predicate => '_has_fh',
-  );
-
-  method lock_session {
-    # FIXME open, flock, _set_fh
-  }
-
-  method unlock_session {
-    # FIXME unlock, close, _clear_fh
-  }
-
-  method save_session {
-    # FIXME serialize out session to save path
-    #  use $self->_fh if we have one
-  }
-
-  method load_session ($self:
-    (Str | PathTiny) :$path,
+  method burn (
+    ConfigObj         :$config,
+    (Str | PathTiny)  :$wav_dir = '',
   ) {
-    # FIXME YAML::Tiny deserializer
-    $path = path("$path") unless is_PathTiny $path;
 
-    my %params; # FIXME
-    blessed($self) ? 
-      blessed($self)->new(%params)
-      : $self->new(%params)
-    # FIXME return blessed($self)->new if blessed
+    my $splitopts = array( split ' ', $config->cdrecord_opts );
+    throw "Missing cdrecord_opts" unless $splitopts->has_any;
+    warn  "cdrecord_opts missing '-audio' flag"
+      unless $splitopts->has_any(sub { $_ eq '-audio' });
+    
+    my $burner = App::cdelius::Backend::Burner->new(
+      cdrecord      => $config->cdrecord_path,
+      cdrecord_opts => $splitopts,
+    );
+
+    $wav_dir = $wav_dir ?
+      path("$wav_dir") : path( $config->wav_dir );
+
+    $burner->burn_cd(
+      wav_dir => $wav_dir,
+    )
   }
+
 }
 
 
