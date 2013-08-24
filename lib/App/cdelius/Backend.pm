@@ -81,7 +81,19 @@ class Decoder :ro {
   
   has ffmpeg => (
     isa       => PathTiny,
+    coerce    => 1,
     required  => 1,
+  );
+
+  has verbose => (
+    isa     => Bool,
+    default => sub { 0 },
+  );
+
+  has global_opts => (
+    isa     => ArrayObj,
+    coerce  => 1,
+    default => sub { [] },
   );
 
   has _ffmpeg_cmd => (
@@ -96,12 +108,12 @@ class Decoder :ro {
   method decode_track( $self:
       PathTiny :$input, 
       PathTiny :$output,
-      ArrayObj :$global_opts = array(),
       ArrayObj :$infile_opts = array(),
-      ArrayObj :$outfile_opts = array(),
+      ArrayObj :$outfile_opts = array()
   ) {
     my $ffm = $self->_ffmpeg_cmd;
     my $cfg = $self->config;
+    my $global_opts = $self->global_opts;
 
     $ffm->global_options( $global_opts->all )   if $global_opts->has_any;
     $ffm->infile_options( $infile_opts->all )   if $infile_opts->has_any;
@@ -112,6 +124,7 @@ class Decoder :ro {
 
     my $res = $ffm->exec;
     throw $ffm->errstr unless $res;
+    say $ffm->stdout if $self->verbose;
   }
 
 }
@@ -131,20 +144,20 @@ class Burner :ro {
   );
 
   method burn_cd( $self:
-    PathTiny :$wavdir
+    PathTiny :$wav_dir
   ) {
     my $cdr  = $self->cdrecord;
     my @opts = split ' ', $self->cdrecord_opts;
 
-    throw "No such directory $wavdir"
-      unless $wavdir->exists;
+    throw "No such directory $wav_dir"
+      unless $wav_dir->exists;
 
     my @tracks;
-    for my $chld ($wavdir->children) {
+    for my $chld ($wav_dir->children) {
       push @tracks, $chld if $chld =~ /\.wav$/;
     }
 
-    throw "No files present under $wavdir"
+    throw "No files present under $wav_dir"
       unless @tracks;
 
     system($cdr, @opts, @tracks) 

@@ -16,4 +16,11 @@ coerce PathTiny =>
   from Str,
   via { path($_) };
 
+declare ConfigObj =>
+  as Object,
+  where { $_->isa('App::cdelius::Backend::Config') };
+
+declare TrackObj =>
+  as Object,
+  where { $_->isa('App::cdelius::UI::Track') };
 1;

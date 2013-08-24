@@ -13,7 +13,11 @@ class Track :ro {
   has name => (
     isa       => Str,
     lazy      => 1,
-    default   => sub { shift->path->basename },
+    default   => sub { 
+      my ($self) = @_;
+      my $base = $self->path->basename;
+      $base =~ s/\.[^.]+$//r;
+    },
   );
 
 }
@@ -39,9 +43,10 @@ class TrackList :ro {
   }
 
   method add_track ($self:
-    Object :$track,
-    (Int|Undef) :$position = undef
+    TrackObj :$track,
+    (Int | Undef) :$position = undef
   ) {
+    # FIXME check for track $name?
     unless (defined $position) {
       $self->_tracks->push( $track );
       return $self->_tracks->count - 1
@@ -51,7 +56,7 @@ class TrackList :ro {
   }
 
   method del_track ($self:
-    Int $position
+    Int :$position
   ) {
     $self->_set_tracks(
       $self->_tracks->sliced( 
@@ -64,25 +69,108 @@ class TrackList :ro {
     Int :$from_index,
     Int :$to_index
   ) {
-    my $track = $self->del_track($from_index)
+    my $track = $self->del_track(position => $from_index)
       or throw "No such track: $from_index";
     $self->add_track(track => $track, position => $to_index)
   }
+
+  method decode_to ($self:
+    ConfigObj :$config,
+    Bool      :$verbose = 0
+  ) {
+
+    my $decoder = App::cdelius::Backend::Decoder->new(
+      ffmpeg  => $config->ffmpeg_path,
+      verbose => $verbose,
+      ( $config->ffmpeg_global_opts ?
+          ( global_opts => [ split ' ', $config->ffmpeg_global_opts ] )
+          : ()
+      ),
+    );
+
+    my $wav_dir = path( $config->wav_dir );
+    $wav_dir->mkpath unless $wav_dir->exists;
+
+    my $tnum = 1000;
+    for my $track ($self->all) {
+      my $name    = $track->name;
+      my $outfile = "${wav_dir}/${tnum}_${name}.wav";
+      $decoder->decode_track(
+        input  => path( $track->path ),
+        output => path( $outfile ),
+
+        ( $config->ffmpeg_infile_opts ?
+            ( infile_opts => [ split ' ', $config->ffmpeg_infile_opts ] )
+            : ()
+        ),
+
+        ( $config->ffmpeg_outfile_opts ?
+          ( outfile_opts => [ split ' ', $config->ffmpeg_outfile_opts ] )
+          : ()
+        ),
+      );
+
+      ++$tnum
+    }
+
+  }
+
 }
 
 
-role UserCmd {
+class Session :ro {
 
-  method list () {}
-  method add  () {}
-  method del  () {}
-  method move () {}
-  method decode () {}
-  method burn () {}
+  has path      => (
+    isa       => PathTiny,
+    coerce    => 1,
+    required  => 1,
+  );
 
+  has name      => (
+    isa       => Str,
+    required  => 1,
+  );
+
+  has tracklist => (
+    isa       => Object,
+    is        => 'rwp',
+    lazy      => 1
+  );
+
+  has _fh => (
+    isa       => FileHandle,
+    lazy      => 1,
+    writer    => '_set_fh',
+    clearer   => '_clear_fh',
+    predicate => '_has_fh',
+  );
+
+  method lock_session {
+    # FIXME open, flock, _set_fh
+  }
+
+  method unlock_session {
+    # FIXME unlock, close, _clear_fh
+  }
+
+  method save_session {
+    # FIXME serialize out session to save path
+    #  use $self->_fh if we have one
+  }
+
+  method load_session ($self:
+    (Str | PathTiny) :$path,
+  ) {
+    # FIXME YAML::Tiny deserializer
+    $path = path("$path") unless is_PathTiny $path;
+
+    my %params; # FIXME
+    blessed($self) ? 
+      blessed($self)->new(%params)
+      : $self->new(%params)
+    # FIXME return blessed($self)->new if blessed
+  }
 }
 
-
-class UserInterface 
 
 1;

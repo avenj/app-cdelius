@@ -25,23 +25,6 @@ has config => (
   }
 );
 
-has decoder => (
-  lazy      => 1,
-  is        => 'ro',
-  isa       => InstanceOf['App::cdelius::Backend::Decoder'],
-  default   => sub {
-    # FIXME
-  },
-);
-
-has burner => (
-  lazy      => 1,
-  is        => 'ro',
-  isa       => InstanceOf['App::cdelius::Backend::Burner'],
-  default   => sub {
-    # FIXME
-  },
-);
-
+## FIXME factory method(s) to glue everything together?
 
 1;
