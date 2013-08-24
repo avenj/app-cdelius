@@ -78,28 +78,36 @@ class TrackList with JSON :ro {
     (Int | Undef) :$position = undef
   ) {
     my $tlist = array( $self->_tracks->all );
+
     unless (defined $position) {
       $tlist->push( $track );
       return $tlist->count - 1
     }
+
     $tlist->splice( $position, 0, $track );
+
     $self->_set_tracks(
       immarray( $tlist->all ) 
     );
-    return $position
+
+    $position
   }
 
   method del_track (Int :$position) {
+    my $track = $self->get_track(position => $position)
+      or throw "No such track: $position";
+
     $self->_set_tracks(
       $self->_tracks->sliced( 
         0 .. ($position - 1), ($position + 1) .. ($self->_tracks->count - 1)
       )
-    )
+    );
+
+    $track
   }
 
   method move_track (Int :$from_index, Int :$to_index) {
-    my $track = $self->del_track(position => $from_index)
-      or throw "No such track: $from_index";
+    my $track = $self->del_track(position => $from_index);
     $self->add_track(track => $track, position => $to_index)
   }
 
