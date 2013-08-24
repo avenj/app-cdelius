@@ -38,7 +38,7 @@ class Config :ro {
     default  => sub { '-vv -audio -pad speed=16' },
   );
 
-  method from_yaml ($class: 
+  method from_yaml (
     (Str | PathTiny) :$path
   ) {
     require YAML::Tiny;
@@ -48,6 +48,7 @@ class Config :ro {
 
     my $yml = YAML::Tiny->new->read("$path");
 
+    my $class = blessed($self) || $self;
     $class->new( %{ $yml->[0] } )
   }
 
