@@ -5,7 +5,11 @@ use v5.14;
 use IO::Handle;
 use List::Objects::WithUtils;
 
-my $opts = +{
+use Function::Parameters;
+
+use PerlX::Define;
+
+my $Opts = +{
   help => sub {
   },
 
@@ -13,15 +17,15 @@ my $opts = +{
   },
 
   config  => do {
-    $ENV{HOME} ? $ENV{HOME} ."/.cdeliusrc"
-      : "cdeliusrc";
+    $ENV{HOME} ? $ENV{HOME} .'/.cdeliusrc'
+      : 'cdeliusrc';
     },
 
   nocolor => 0,
 };
 
 use Getopt::Long;
-GetOptions( $opts,
+GetOptions( $Opts,
   qw/
     help
     version
@@ -32,10 +36,17 @@ GetOptions( $opts,
   /,
 );
 
-$opts = hash(%$opts)->inflate;
+sub getopts {
+  state $argv = hash(%$Opts)->inflate;
+  $argv
+}
+undef $Opts;
 
 use App::cdelius;
-use App::cdelius::Types;
+use App::cdelius::Exception;
+use App::cdelius::Types -all;
+
+use Types::Standard -types;
 
 use Term::UI;
 use Term::ReadLine;
@@ -45,21 +56,22 @@ my $term   = Term::ReadLine->new('cdelius');
 my $outfh  = $term->OUT || \*STDOUT;
 $outfh->autoflush(1);
 
+
 $outfh->say("Welcome to cdelius!\n");
 
-unless (-e $opts->config) {
+unless (-e getopts->config) {
   my $should_create = $term->ask_yn(
     print_me =>
-      ">>> No such file: ".$opts->config,
+      ">>> No such file: ".getopts->config,
     prompt => 
       "Would you like to initialize a new configuration file?",
     default => 'y',
   );
 
   if ($should_create) {
-    $outfh->print(" ... creating ".$opts->config);
+    $outfh->print(" ... creating ".getopts->config);
     App::cdelius::Backend::Config->write_new_config(
-      path => $opts->config
+      path => getopts->config
     );
     $outfh->print(" ... done\n");
   } else {
@@ -67,10 +79,28 @@ unless (-e $opts->config) {
   }
 }
 
-my $cdel = App::cdelius->new(
-  config_file_path => $opts->{config},
-);
 
+fun app ( 
+  (Object | Undef) $cdel = undef,
+) {
+  state $_cdel;
+  $_cdel = $cdel if defined $cdel;
+  $_cdel //= App::cdelius->new(
+    config_file_path => getopts->config,
+  )
+}
+
+
+fun list_is_dirty (
+  (Bool | Undef) $is_dirty = undef,
+) {
+  state $dirty;
+  $dirty = $is_dirty if defined $is_dirty;
+  $dirty //= 0
+}
+
+
+define RET_LIST_DIRTY = -2;
 
 
 PROMPT: while (1) {
@@ -83,21 +113,22 @@ PROMPT: while (1) {
   if ($cmd) {
     $term->addhistory($cmd);
 
-    my ($cmdopts, $parsedcmd) = $term->parse_options($cmd);
+    my ($optmap, $parsedcmd) = $term->parse_options($cmd);
     my ($thiscmd, @remain)  = parse_line('\s+', 0, $parsedcmd);
+
     dispatch( $thiscmd =>
-      hash(%$cmdopts),
+      hash(%$optmap),
       array(@remain)
     ) if $thiscmd;
   }
 }
 
 sub dispatch {
-  my ($thiscmd, $cmdopts, $args) = @_;
+  my ($thiscmd, $optmap, $args) = @_;
 
-  confess "Expected HashObj but got $cmdopts"
-    unless is_HashObj $cmdopts;
-  confess "Expected ArrayObj but got $args"
+  throw "Expected HashObj but got $optmap"
+    unless is_HashObj $optmap;
+  throw "Expected ArrayObj but got $args"
     unless is_ArrayObj $args;
 
   my $subname = 'cmd_'.$thiscmd;
@@ -107,32 +138,100 @@ sub dispatch {
     return
   }
 
-  $code->($cmdopts, $args)
+  my $ret = $code->($optmap, $args);
+  list_is_dirty(1) if $ret == RET_LIST_DIRTY;
+
+  $ret
 }
 
-sub cmd_h    { goto \&cmd_help }
-sub cmd_help {
-}
+
 
 sub cmd_q    { goto \&cmd_quit }
 sub cmd_quit {
+  if (list_is_dirty) {
+    my $do_save = $term->ask_yn(
+      print_me =>
+        ">>> TrackList has unsaved changes",
+      prompt =>
+        "Save this list before quitting?",
+      default => 'y',
+    );
+    if ($do_save) {
+      ## FIXME dispatch save
+    }
+  }
+  $outfh->say("<< Goodbye!");
+  exit 0
 }
 
 sub cmd_list {
+  my ($optmap, $args) = @_;
+
+  if ($args->has_any) {
+    # FIXME list ranges, e.g. 'list 1 .. 5' or 'list 1 5'
+  }
+  
+  my @tracks = app->tracklist->all;
+  # FIXME iterate track objs and build pretty output
 }
 
 sub cmd_add {
+  my ($optmap, $args) = @_;
+  # FIXME syntax:
+  #   add $path
+  #   add $path $position (must be positive)
+  # FIXME call $tlist->new_track(path => ...) to spawn obj,
+  #  ->add_track to add
+  # FIXME return RET_LIST_DIRTY if successful
 }
 
 sub cmd_del    { goto \&cmd_delete }
 sub cmd_delete {
+  my ($optmap, $args) = @_;
+  # FIXME syntax:
+  #   del $index 
+  # FIXME return RET_LIST_DIRTY if successful
 }
 
 sub cmd_move {
+  # FIXME syntax:
+  #   move $from_idx up
+  #   move $from_idx down
+  #   move $from_idx $to_idx
+  # FIXME return RET_LIST_DIRTY if successful
 }
 
 sub cmd_load {
+  # FIXME syntax:
+  #   load $tlist_path
+  # FIXME create new app($obj)
 }
 
+sub cmd_save {
+  # FIXME syntax:
+  #   save (prompt if no ->path)
+  #   save $path
+  # FIXME set saved flag
+}
+
+sub cmd_h    { goto \&cmd_help }
+sub cmd_help {
+  my ($optmap, $args) = @_;
+
+  # FIXME help items + default
+  state $help_for = hash(
+    quit => array(),
+    list => array(),
+    add  => array(),
+    del  => array(),
+    move => array(),
+    load => array(),
+    save => array(),
+  );
+
+  if ($args->has_any) {
+    # FIXME 'help $item' syntax
+  }
+}
 
 # vim: ts=2 sw=2 et sts=2 ft=perl
