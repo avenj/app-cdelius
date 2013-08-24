@@ -61,6 +61,14 @@ class TrackList with JSON :ro {
 
   define INITIAL_TRACK = 1000;
 
+  method new_track (
+    (Str | PathTiny) :$path
+  ) {
+    App::cdelius::UI::Track->new(
+      path => $path,
+    )
+  }
+
   method all { $self->_tracks->all }
 
   method shuffled {
