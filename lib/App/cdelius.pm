@@ -1,7 +1,6 @@
 package App::cdelius;
 use strictures 1;
 
-use App::cdelius::Backend;
 use App::cdelius::UI;
 
 use Function::Parameters;
@@ -25,6 +24,14 @@ has config => (
   }
 );
 
-## FIXME factory method(s) to glue everything together?
+has tracklist => (
+  lazy      => 1,
+  is        => 'ro',
+  isa       => InstanceOf['App::cdelius::UI::TrackList'],
+  default   => sub {
+    # FIXME spawn tracklist
+  },
+);
+
 
 1;
