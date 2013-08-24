@@ -1,5 +1,5 @@
 package App::cdelius::Moops;
-use strict; use warnings FATAL => 'all';
+use strictures 1;
 
 use parent 'MoopsX::ListObjects';
 use Path::Tiny ();

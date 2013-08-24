@@ -1,7 +1,5 @@
 package App::cdelius::UI;
-
 use App::cdelius::Moops;
-use App::cdelius::Backend;
 
 role JSON {
   method TO_JSON {
@@ -169,7 +167,7 @@ class TrackList with JSON :ro {
     Bool             :$verbose = 0
   ) {
 
-    my $decoder = App::cdelius::Backend::Decoder->new(
+    my $decoder = App::cdelius::Component->build( 'Backend::Decoder' =>
       ffmpeg  => $config->ffmpeg_path,
       verbose => $verbose,
       ( $config->ffmpeg_global_opts ?
@@ -220,7 +218,7 @@ class TrackList with JSON :ro {
     warn  "cdrecord_opts missing '-audio' flag"
       unless $splitopts->has_any(sub { $_ eq '-audio' });
     
-    my $burner = App::cdelius::Backend::Burner->new(
+    my $burner = App::cdelius::Component->build( 'Backend::Burner' =>
       cdrecord      => $config->cdrecord_path,
       cdrecord_opts => $splitopts,
     );

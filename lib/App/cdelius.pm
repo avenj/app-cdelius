@@ -1,11 +1,10 @@
 package App::cdelius;
 use strictures 1;
 
-use App::cdelius::UI;
-
 use Function::Parameters;
-
 use Types::Standard -types;
+
+use App::cdelius::Component;
 
 use Moo;
 
@@ -20,7 +19,7 @@ has config => (
   is        => 'ro',
   isa       => InstanceOf['App::cdelius::Backend::Config'],
   default   => sub {
-    # FIXME config load
+    # FIXME config load (use ::Component)
   }
 );
 
@@ -29,7 +28,7 @@ has tracklist => (
   is        => 'ro',
   isa       => InstanceOf['App::cdelius::UI::TrackList'],
   default   => sub {
-    # FIXME spawn tracklist
+    # FIXME spawn tracklist (use ::Component)
   },
 );
 
