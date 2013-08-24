@@ -52,7 +52,7 @@ class TrackList with JSON :ro {
   );
 
   has _tracks => (
-    isa       => ArrayObj,
+    isa       => ImmutableArray,
     coerce    => 1,
     default   => sub { [] },
     writer    => '_set_tracks',
@@ -67,6 +67,40 @@ class TrackList with JSON :ro {
     blessed($self)->new(
       init_tracks => [ $self->_tracks->shuffle->all ]
     )
+  }
+
+  method get_track (Int :$position) { 
+    $self->_tracks->get($position)
+  }
+
+  method add_track (
+    TrackObj      :$track,
+    (Int | Undef) :$position = undef
+  ) {
+    my $tlist = array( $self->_tracks->all );
+    unless (defined $position) {
+      $tlist->push( $track );
+      return $tlist->count - 1
+    }
+    $tlist->splice( $position, 0, $track );
+    $self->_set_tracks(
+      immarray( $tlist->all ) 
+    );
+    return $position
+  }
+
+  method del_track (Int :$position) {
+    $self->_set_tracks(
+      $self->_tracks->sliced( 
+        0 .. ($position - 1), ($position + 1) .. ($self->_tracks->count - 1)
+      )
+    )
+  }
+
+  method move_track (Int :$from_index, Int :$to_index) {
+    my $track = $self->del_track(position => $from_index)
+      or throw "No such track: $from_index";
+    $self->add_track(track => $track, position => $to_index)
   }
 
   method save (
@@ -111,36 +145,6 @@ class TrackList with JSON :ro {
       init_tracks => $tlist,
       path        => "$path",
     )
-  }
-
-  method get_track (Int :$position) { 
-    $self->_tracks->get($position)
-  }
-
-  method add_track (
-    TrackObj      :$track,
-    (Int | Undef) :$position = undef
-  ) {
-    unless (defined $position) {
-      $self->_tracks->push( $track );
-      return $self->_tracks->count - 1
-    }
-    $self->_tracks->splice( $position, 0, $track );
-    return $position
-  }
-
-  method del_track (Int :$position) {
-    $self->_set_tracks(
-      $self->_tracks->sliced( 
-        0 .. ($position - 1), ($position + 1) .. ($self->_tracks->count - 1)
-      )
-    )
-  }
-
-  method move_track (Int :$from_index, Int :$to_index) {
-    my $track = $self->del_track(position => $from_index)
-      or throw "No such track: $from_index";
-    $self->add_track(track => $track, position => $to_index)
   }
 
   method decode (

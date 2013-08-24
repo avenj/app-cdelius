@@ -21,7 +21,7 @@ has config => (
   is        => 'ro',
   isa       => InstanceOf['App::cdelius::Backend::Config'],
   default   => sub {
-    # FIXME
+    # FIXME config load
   }
 );
 
