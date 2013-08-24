@@ -1,162 +1,47 @@
 package App::cdelius;
-use App::cdelius::Moops;
+use strictures 1;
 
-class Config :ro {
+use App::cdelius::Backend;
+use App::cdelius::UI;
 
-  has wav_dir => (
-    isa       => Str,
-    default   => sub { '/tmp/cdelius' },
-  );
+use Function::Parameters;
 
-  has ffmpeg_path => (
-    isa       => Str,
-    default   => sub { '/usr/bin/ffmpeg' },
-  );
+use Types::Standard -types;
 
-  has ffmpeg_global_opts => ( 
-    isa     => Str,
-    default => sub { '' },
-  );
+use Moo;
 
-  has ffmpeg_infile_opts => (
-    isa     => Str,
-    default => sub { '' },
-  );
+has config_file_path => (
+  required  => 1,
+  is        => 'ro',
+  isa       => Str,
+);
 
-  has ffmpeg_outfile_opts => (
-    isa     => Str,
-    default => sub { '' },
-  );
-
-  has cdrecord_path => (
-    isa      => Str,
-    default  => sub { '/usr/bin/cdrecord' },
-  );
-
-  has cdrecord_opts => (
-    isa      => Str,
-    default  => sub { '-vv -audio -pad speed=16' },
-  );
-
-  method from_yaml ($class: 
-    :$path
-  ) {
-    require YAML::Tiny;
-
-    $path = path($path) unless is_PathTiny($path);
-    throw "No such file $path" unless $path->exists;
-
-    my $yml = YAML::Tiny->new->read("$path");
-
-    $class->new( %{ $yml->[0] } )
+has config => (
+  lazy      => 1,
+  is        => 'ro',
+  isa       => InstanceOf['App::cdelius::Backend::Config'],
+  default   => sub {
+    # FIXME
   }
+);
 
-  method to_yaml ($self:
-    :$path,
-    :$data = undef
-  ) {
-    require YAML::Tiny;
-    my $yml = YAML::Tiny->new;
+has decoder => (
+  lazy      => 1,
+  is        => 'ro',
+  isa       => InstanceOf['App::cdelius::Backend::Decoder'],
+  default   => sub {
+    # FIXME
+  },
+);
 
-    $yml->[0] = $data ? $data : +{ %$self };
-
-    $yml->write("$path")
-  }
-
-  method write_new_config($self:
-    :$path,
-    :$force = 0
-  ) {
-    $path = path($path) unless is_PathTiny($path);
-    throw "File already exists at $path" if $path->exists and !$force;
-    my $class = blessed($self) || $self;
-    my $new = $class->new; 
-    $new->to_yaml(path => $path)
-  }
-
-}
-
-
-class Decoder :ro {
-  
-  has ffmpeg => (
-    isa       => PathTiny,
-    required  => 1,
-  );
-
-  has _ffmpeg_cmd => (
-    isa       => Object,
-    lazy      => 1,
-    default   => sub {
-      my ($self) = @_;
-      FFmpeg::Command->new( $self->ffmpeg )
-    },
-  );
-
-  method decode_track( $self:
-      PathTiny :$input, 
-      PathTiny :$output,
-      ArrayObj :$global_opts = array(),
-      ArrayObj :$infile_opts = array(),
-      ArrayObj :$outfile_opts = array(),
-  ) {
-    my $ffm = $self->_ffmpeg_cmd;
-    my $cfg = $self->config;
-
-    $ffm->global_options( $global_opts->all )   if $global_opts->has_any;
-    $ffm->infile_options( $infile_opts->all )   if $infile_opts->has_any;
-    $ffm->outfile_options( $outfile_opts->all ) if $outfile_opts->has_any;
-
-    $ffm->input_file("$input");
-    $ffm->output_file("$output");
-
-    my $res = $ffm->exec;
-    throw $ffm->errstr unless $res;
-  }
-
-}
-
-
-class Burner :ro {
-
-  has cdrecord => (
-    isa      => PathTiny,
-    coerce   => 1,
-    required => 1,
-  );
-
-  has cdrecord_opts => (
-    isa      => Str,
-    required => 1,
-  );
-
-  method burn_cd( $self:
-    PathTiny :$wavdir
-  ) {
-    my $cdr  = $self->cdrecord;
-    my @opts = split ' ', $self->cdrecord_opts;
-
-    throw "No such directory $wavdir"
-      unless $wavdir->exists;
-
-    my @tracks;
-    for my $chld ($wavdir->children) {
-      push @tracks, $chld if $chld =~ /\.wav$/;
-    }
-
-    throw "No files present under $wavdir"
-      unless @tracks;
-
-    system($cdr, @opts, @tracks) 
-  }
-  
-}
-
-
-class UserInterface {
-  # FIXME require ::UI, glue everything together, return
-  # appropriate interface obj
-}
+has burner => (
+  lazy      => 1,
+  is        => 'ro',
+  isa       => InstanceOf['App::cdelius::Backend::Burner'],
+  default   => sub {
+    # FIXME
+  },
+);
 
 
 1;

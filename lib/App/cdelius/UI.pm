@@ -1,6 +1,7 @@
 package App::cdelius::UI;
 
 use App::cdelius::Moops;
+use App::cdelius::Backend;
 
 class Track :ro {
 
@@ -70,9 +71,18 @@ class TrackList :ro {
 }
 
 
-class Cmd {
+role UserCmd {
 
-    # FIXME
+  method list () {}
+  method add  () {}
+  method del  () {}
+  method move () {}
+  method decode () {}
+  method burn () {}
+
 }
+
+
+class UserInterface 
 
 1;

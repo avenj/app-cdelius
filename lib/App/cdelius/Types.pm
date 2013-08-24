@@ -1,5 +1,5 @@
 package App::cdelius::Types;
-use strict; use warnings FATAL => 'all';
+use strictures 1;
 
 use Type::Library -base;
 use Type::Utils   -all;
