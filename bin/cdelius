@@ -1,13 +1,11 @@
 #!perl
-use strictures 1;
 
-use v5.14;
-use IO::Handle;
-use List::Objects::WithUtils;
+use Defaults::Modern;
 
-use Function::Parameters;
-
-use PerlX::Define;
+use App::cdelius;
+use App::cdelius::Component;
+use App::cdelius::Exception;
+use App::cdelius::Types -all;
 
 my $Opts = +{
   help => sub {
@@ -36,17 +34,10 @@ GetOptions( $Opts,
   /,
 );
 
-sub getopts {
+fun getopts {
   state $argv = hash(%$Opts)->inflate;
   $argv
 }
-undef $Opts;
-
-use App::cdelius;
-use App::cdelius::Exception;
-use App::cdelius::Types -all;
-
-use Types::Standard -types;
 
 use Term::UI;
 use Term::ReadLine;
@@ -70,9 +61,11 @@ unless (-e getopts->config) {
 
   if ($should_create) {
     $outfh->print(" ... creating ".getopts->config);
-    App::cdelius::Backend::Config->write_new_config(
-      path => getopts->config
-    );
+
+    App::cdelius::Component
+      ->build('Backend::Config')
+      ->write_new_config(path => getopts->config);
+
     $outfh->print(" ... done\n");
   } else {
     $outfh->say(">> Continuing with defaults ...");
@@ -80,23 +73,23 @@ unless (-e getopts->config) {
 }
 
 
-fun app ( 
-  (Object | Undef) $cdel = undef,
-) {
-  state $_cdel;
-  $_cdel = $cdel if defined $cdel;
-  $_cdel //= App::cdelius->new(
-    config_file_path => getopts->config,
-  )
+fun app
+  ( (Object | Undef) $cdel = undef ) {
+    state $_cdel;
+    $_cdel = $cdel if defined $cdel;
+
+    $_cdel //= App::cdelius->new(
+      config_file_path => getopts->config,
+    )
 }
 
 
-fun list_is_dirty (
-  (Bool | Undef) $is_dirty = undef,
-) {
-  state $dirty;
-  $dirty = $is_dirty if defined $is_dirty;
-  $dirty //= 0
+fun list_is_dirty 
+  ( (Bool | Undef) $is_dirty = undef ) {
+    state $_is_dirty;
+    $_is_dirty = $is_dirty if defined $is_dirty;
+
+    $_is_dirty //= 0
 }
 
 
@@ -123,14 +116,11 @@ PROMPT: while (1) {
   }
 }
 
-sub dispatch {
-  my ($thiscmd, $optmap, $args) = @_;
-
-  throw "Expected HashObj but got $optmap"
-    unless is_HashObj $optmap;
-  throw "Expected ArrayObj but got $args"
-    unless is_ArrayObj $args;
-
+fun dispatch (
+  Str      $thiscmd,
+  HashObj  $optmap,
+  ArrayObj $args
+) {
   my $subname = 'cmd_'.$thiscmd;
   my $code;
   unless ($code = __PACKAGE__->can($subname)) {
@@ -146,77 +136,114 @@ sub dispatch {
 
 
 
-sub cmd_q    { goto \&cmd_quit }
-sub cmd_quit {
-  if (list_is_dirty) {
-    my $do_save = $term->ask_yn(
-      print_me =>
-        ">>> TrackList has unsaved changes",
-      prompt =>
-        "Save this list before quitting?",
-      default => 'y',
-    );
-    if ($do_save) {
-      ## FIXME dispatch save
+fun cmd_q    { goto \&cmd_quit }
+fun cmd_quit 
+  (HashObj $optmap, ArrayObj $args) {
+
+    if (list_is_dirty) {
+      my $do_save = $term->ask_yn(
+        print_me => ">>> TrackList has unsaved changes",
+        prompt => "Save this list before quitting?",
+        default => 'y',
+      );
+
+      if ($do_save) {
+       ## FIXME dispatch save
+      }
     }
-  }
-  $outfh->say("<< Goodbye!");
-  exit 0
+
+    $outfh->say("<< Goodbye!");
+
+    exit 0
 }
 
-sub cmd_list {
-  my ($optmap, $args) = @_;
+fun cmd_list 
+  (HashObj $optmap, ArrayObj $args) {
 
-  if ($args->has_any) {
-    # FIXME list ranges, e.g. 'list 1 .. 5' or 'list 1 5'
-  }
+    if ($args->has_any) {
+      # FIXME list ranges, e.g. 'list 1 .. 5' or 'list 1 5'
+    }
   
-  my @tracks = app->tracklist->all;
-  # FIXME iterate track objs and build pretty output
+    my @tracks = app->tracklist->all;
+    # FIXME iterate track objs and build pretty output
 }
 
-sub cmd_add {
-  my ($optmap, $args) = @_;
-  # FIXME syntax:
-  #   add $path
-  #   add $path $position (must be positive)
-  # FIXME call $tlist->new_track(path => ...) to spawn obj,
-  #  ->add_track to add
-  # FIXME return RET_LIST_DIRTY if successful
+fun cmd_add
+  (HashObj $optmap, ArrayObj $args) {
+
+    unless ($args->has_any) {
+      return dispatch( help => hash(), array('add') )
+    }
+
+    if ($args->count == 1) {
+      # FIXME add $path syntax
+    } elsif ($args->count == 2) {
+      # FIXME add $path $position syntax
+      #  check for valid position
+    } else {
+      # FIXME warn about too many args
+    }
+    # FIXME call $tlist->new_track(path => ...) to spawn obj,
+    #  ->add_track to add
+    # FIXME return RET_LIST_DIRTY if successful
 }
 
-sub cmd_del    { goto \&cmd_delete }
-sub cmd_delete {
-  my ($optmap, $args) = @_;
-  # FIXME syntax:
-  #   del $index 
-  # FIXME return RET_LIST_DIRTY if successful
+fun cmd_del    { goto \&cmd_delete }
+fun cmd_delete
+  (HashObj $optmap, ArrayObj $args) {
+    # FIXME syntax:
+    #   del $index 
+    # FIXME return RET_LIST_DIRTY if successful
 }
 
-sub cmd_move {
-  # FIXME syntax:
-  #   move $from_idx up
-  #   move $from_idx down
-  #   move $from_idx $to_idx
-  # FIXME return RET_LIST_DIRTY if successful
+fun cmd_move
+  (HashObj $optmap, ArrayObj $args) {
+
+    unless ($args->count == 2) {
+      # FIXME bad syntax, dispatch to help?
+    }
+
+    my ($from, $to) = $args->all;
+
+    unless ( app->tracklist->get_track($from) ) {
+      # FIXME no such track
+    }
+
+    if ($to eq 'up') {
+      # FIXME bump up one (allow --count?)
+    } elsif ($to eq 'down') {
+      # FIXME bump down   (allow --count?)
+    } elsif ($to =~ /^[0-9]+$/) {
+      # move to position 
+    } else {
+      # bad syntax
+    }
+
+    # FIXME syntax:
+    #   move $from_idx up
+    #   move $from_idx down
+    #   move $from_idx $to_idx
+    # FIXME return RET_LIST_DIRTY if successful
 }
 
-sub cmd_load {
+fun cmd_load 
+  (HashObj $optmap, ArrayObj $args) {
   # FIXME syntax:
   #   load $tlist_path
   # FIXME create new app($obj)
 }
 
-sub cmd_save {
+fun cmd_save
+  (HashObj $optmap, ArrayObj $args) {
   # FIXME syntax:
   #   save (prompt if no ->path)
   #   save $path
   # FIXME set saved flag
 }
 
-sub cmd_h    { goto \&cmd_help }
-sub cmd_help {
-  my ($optmap, $args) = @_;
+fun cmd_h    { goto \&cmd_help }
+fun cmd_help
+  (HashObj $optmap, ArrayObj $args) {
 
   # FIXME help items + default
   state $help_for = hash(
@@ -233,5 +260,7 @@ sub cmd_help {
     # FIXME 'help $item' syntax
   }
 }
+
+
 
 # vim: ts=2 sw=2 et sts=2 ft=perl
