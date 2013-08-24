@@ -7,6 +7,8 @@ use Path::Tiny ();
 sub import {
   push @{ $_[1] ||= [] }, (
     'Path::Tiny'              => [ 'path' ],
+    'PerlX::Maybe'            => [ 'maybe', 'provided' ],
+
     'App::cdelius::Types'     => [ -all ],
     'App::cdelius::Exception' => [ 'throw' ],
   );
