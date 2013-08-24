@@ -39,11 +39,11 @@ class Config :ro {
   );
 
   method from_yaml ($class: 
-    :$path
+    (Str | PathTiny) :$path
   ) {
     require YAML::Tiny;
 
-    $path = path($path) unless is_PathTiny($path);
+    $path = path("$path") unless is_PathTiny($path);
     throw "No such file $path" unless $path->exists;
 
     my $yml = YAML::Tiny->new->read("$path");
@@ -51,9 +51,9 @@ class Config :ro {
     $class->new( %{ $yml->[0] } )
   }
 
-  method to_yaml ($self:
-    :$path,
-    :$data = undef
+  method to_yaml (
+    (Str | PathTiny)  :$path,
+    (Ref | Undef)     :$data = undef
   ) {
     require YAML::Tiny;
     my $yml = YAML::Tiny->new;
@@ -63,9 +63,9 @@ class Config :ro {
     $yml->write("$path")
   }
 
-  method write_new_config($self:
-    :$path,
-    :$force = 0
+  method write_new_config(
+    (Str | PathTiny)  :$path,
+    Bool              :$force = 0
   ) {
     $path = path($path) unless is_PathTiny($path);
     throw "File already exists at $path" if $path->exists and !$force;
@@ -105,7 +105,7 @@ class Decoder :ro {
     },
   );
 
-  method decode_track( $self:
+  method decode_track(
       PathTiny :$input, 
       PathTiny :$output,
       ArrayObj :$infile_opts = array(),
@@ -139,7 +139,8 @@ class Burner :ro {
   );
 
   has cdrecord_opts => (
-    isa      => Str,
+    isa      => ArrayObj,
+    coerce   => 1,
     required => 1,
   );
 
