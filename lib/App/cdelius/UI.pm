@@ -113,7 +113,13 @@ class TrackList with JSON :ro {
   }
 
   method move_track (Int :$from_index, Int :$to_index) {
+    my $last_pos = $self->_tracks->count - 1;
+    $last_pos = 0 if $last_pos < 0;
+    throw "Destination index $to_index beyond end of list"
+      if $to_index > $last_pos;
     my $track = $self->del_track(position => $from_index);
+    throw "No track found at index $from_index"
+      unless $track;
     $self->add_track(track => $track, position => $to_index)
   }
 
