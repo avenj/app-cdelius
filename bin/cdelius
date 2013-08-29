@@ -344,27 +344,63 @@ fun cmd_help
 
   # FIXME help items + default
   state $help_for = hash(
-    quit => sub { array() },
+    quit => sub { 
+      array(
+        ' > quit',
+        '',
+        'Exit the application.',
+      )
+    },
 
-    list => sub { array() },
+    list => sub { 
+      array(
+        ' > list',
+        ' > list START .. END',
+        '',
+        'List tracks on current list.',
+        'A range can be specified.',
+      )
+    },
 
-    add  => sub { array() },
+    add  => sub { 
+      array(
+        ' > add PATH',
+        ' > add PATH POSITION',
+        '',
+        'Add PATH to the current list.',
+        'A target position can be specified.',
+      )
+    },
 
-    del  => sub { array() },
+    del  => sub { 
+      array(
+        ' > del POSITION',
+        '',
+        'Remove the track at POSITION from the current list.',
+      ) 
+    },
 
-    move => sub { array() },
+    move => sub { 
+      array(
+        ' > move POSITION NEW_POSITION',
+        ' > move POSITION up',
+        ' > move POSITION down',
+        '',
+        'Move the track at POSITION to NEW_POSITION'
+          .'or in a specified direction.',
+      )
+    },
 
     load => sub { array() },
 
     save => sub { array() },
-  )->inflate;
+  );
 
   my $help;
-
   if ($args->has_any) {
     my ($item, $rest) = $args->head;
-    if ($help_for->can($item)) {
-      $help = $help_for->$item($rest)
+    if (my $item = $help_for->get($item)) {
+      $help = $item->($rest)->map(sub { $_ . "\n" });
     } else {
       $outfh->say(">> Unknown help item: $item")
     }
