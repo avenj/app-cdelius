@@ -39,16 +39,24 @@ fun getopts {
   $argv
 }
 
+
 use Term::UI;
 use Term::ReadLine;
 use Text::ParseWords 'parse_line';
-
-my $term   = Term::ReadLine->new('cdelius');
+my $termpkg = $ENV{PERL_RL} || try {
+  require Term::ReadLine::Perl5;
+  'Perl5'
+};
+$termpkg = $termpkg ? 
+    'Term::ReadLine::'.$termpkg 
+  : 'Term::ReadLine';
+my $term   = $termpkg->new('cdelius');
 my $outfh  = $term->OUT || \*STDOUT;
 $outfh->autoflush(1);
 
 
-$outfh->say("Welcome to cdelius!\n");
+$outfh->say("Welcome to cdelius!");
+$outfh->say(' (readline: ', $term->ReadLine, ')');
 
 unless (-e getopts->config) {
   my $should_create = $term->ask_yn(
@@ -126,7 +134,7 @@ fun dispatch (
   }
 
   my $ret = $code->($optmap, $args);
-  list_is_dirty(1) if $ret == RET_LIST_DIRTY;
+  list_is_dirty(1) if defined $ret and $ret == RET_LIST_DIRTY;
 
   $ret
 }
@@ -177,6 +185,8 @@ fun cmd_list
     for my $track (@tracks) {
       $outfh->say(' -> ', $track->name);
     }
+
+    1
 }
 
 fun cmd_add
