@@ -145,7 +145,7 @@ fun cmd_quit
       );
 
       if ($do_save) {
-       ## FIXME dispatch save
+        dispatch( save => hash, array )
       }
     }
 
@@ -157,12 +157,26 @@ fun cmd_quit
 fun cmd_list 
   (HashObj $optmap, ArrayObj $args) {
 
+    # list
+    # list 1 .. 5
+
+    my ($start, $end);
     if ($args->has_any) {
-      # FIXME list ranges, e.g. 'list 1 .. 5' or 'list 1 5'
+      my $range = $args->grep(sub { is_Int $_ });
+      unless ($range->count == 2) {
+        $outfh->say(">> Expected start/end Ints");
+        return dispatch( help => hash, array('list') )
+      }
+
+      ($start, $end) = $range->all;
     }
   
     my @tracks = app->tracklist->all;
-    # FIXME iterate track objs and build pretty output
+    @tracks = defined $end ? @tracks[$start .. $end] : @tracks;
+
+    for my $track (@tracks) {
+      $outfh->say(' -> ', $track->name);
+    }
 }
 
 fun cmd_add
@@ -171,7 +185,7 @@ fun cmd_add
     # add $path $index
 
     unless ($args->has_any) {
-      return dispatch( help => hash(), array('add') )
+      return dispatch( help => hash, array('add') )
     }
 
     if ($args->count == 1 || $args->count == 2) {
@@ -220,7 +234,7 @@ fun cmd_delete
 
     unless ($args->count == 1) {
       $outfh->say(">> Expected 1 arg but got ".$args->count, "\n");
-      return dispatch( help => hash(), array('del') )
+      return dispatch( help => hash, array('del') )
     }
 
     my $from = $args->head;
@@ -249,7 +263,7 @@ fun cmd_move
 
     unless ($args->count == 2) {
       $outfh->say(">> Expected 2 args but got ".$args->count, "\n");
-      return dispatch( help => hash(), array('move') )
+      return dispatch( help => hash, array('move') )
     }
 
     my ($from, $to) = $args->all;
@@ -292,7 +306,7 @@ fun cmd_move
       } or return;
     } else {
       $outfh->say(">> Unknown parameter $to");
-      return dispatch( help => hash(), array('move') )
+      return dispatch( help => hash, array('move') )
     }
 
     RET_LIST_DIRTY
@@ -303,6 +317,7 @@ fun cmd_load
   # FIXME syntax:
   #   load $tlist_path
   # FIXME create new app($obj)
+  # FIXME warn/prompt if list_is_dirty
 }
 
 fun cmd_save
@@ -310,7 +325,17 @@ fun cmd_save
   # FIXME syntax:
   #   save (prompt if no ->path)
   #   save $path
-  # FIXME set saved flag
+  # FIXME set list_is_dirty(0)
+}
+
+fun cmd_decode
+  (HashObj $optmap, ArrayObj $args) {
+
+}
+
+fun cmd_burn
+  (HashObj $optmap, ArrayObj $args) {
+
 }
 
 fun cmd_h    { goto \&cmd_help }
@@ -319,18 +344,43 @@ fun cmd_help
 
   # FIXME help items + default
   state $help_for = hash(
-    quit => array(),
-    list => array(),
-    add  => array(),
-    del  => array(),
-    move => array(),
-    load => array(),
-    save => array(),
-  );
+    quit => sub { array() },
+
+    list => sub { array() },
+
+    add  => sub { array() },
+
+    del  => sub { array() },
+
+    move => sub { array() },
+
+    load => sub { array() },
+
+    save => sub { array() },
+  )->inflate;
+
+  my $help;
 
   if ($args->has_any) {
-    # FIXME 'help $item' syntax
+    my ($item, $rest) = $args->head;
+    if ($help_for->can($item)) {
+      $help = $help_for->$item($rest)
+    } else {
+      $outfh->say(">> Unknown help item: $item")
+    }
   }
+
+  if (defined $help) {
+    $outfh->say( $help->all )
+  } else {
+    $outfh->say(">> Valid help topics:");
+    my $topics = $help_for->keys->natatime(4);
+    while (my @nxt = $topics->()) {
+      $outfh->say(' ', join '  ', @nxt)
+    }
+  }
+
+  1
 }
 
 
