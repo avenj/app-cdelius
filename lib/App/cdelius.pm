@@ -9,7 +9,7 @@ use Moo;
 has factory => (
   is        => 'ro',
   isa       => InstanceOf['App::cdelius::Component'],
-  default   => sub { App::cdelius::Component->new },
+  default   => sub { App::cdelius::Component->new_factory },
 );
 
 has config_file_path => (

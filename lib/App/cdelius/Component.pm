@@ -6,7 +6,7 @@ use App::cdelius::UI;
 
 use Function::Parameters;
 
-method new_factory { bless [], shift }
+method new_factory ($class: %params) { bless [], $class }
 
 method build ($component, %params) {
   my $pkg = 'App::cdelius::'.$component;
