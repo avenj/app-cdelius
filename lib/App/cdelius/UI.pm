@@ -90,6 +90,13 @@ class TrackList with JSON :ro {
       return $tlist->count - 1
     }
 
+    throw "Destination index $position cannot be negative"
+      unless $position >= 0;
+
+    my $last_pos = $self->_tracks->has_any ? $self->_tracks->count -1 : 0;
+    throw "Destination index $position beyond end of list"
+      if $position > $last_pos;
+
     $tlist->splice( $position, 0, $track );
 
     $self->_set_tracks(
@@ -113,8 +120,7 @@ class TrackList with JSON :ro {
   }
 
   method move_track (Int :$from_index, Int :$to_index) {
-    my $last_pos = $self->_tracks->count - 1;
-    $last_pos = 0 if $last_pos < 0;
+    my $last_pos = $self->_tracks->has_any ? $self->_tracks->count - 1 : 0;
     throw "Destination index $to_index beyond end of list"
       if $to_index > $last_pos;
     my $track = $self->del_track(position => $from_index);
