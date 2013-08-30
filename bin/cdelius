@@ -195,7 +195,7 @@ fun cmd_list
       $outfh->print(
         ' -> ', $track->name, "\n",
         ( 
-          $optmap->get('verbose') ? ($track->path, "\n") : ()
+          $optmap->get('verbose') ? ($track->trackpath, "\n") : ()
         ),
       );
     }
@@ -350,7 +350,7 @@ fun cmd_load
 fun cmd_save
   (HashObj $optmap, ArrayObj $args) {
   # FIXME syntax:
-  #   save (prompt if no ->path)
+  #   save (prompt if no tracklist->listpath)
   #   save $path
   # FIXME set list_is_dirty(0)
 }

@@ -1,5 +1,5 @@
 package App::cdelius::Exception;
-use strictures 1;
+use strict; use warnings FATAL => 'all';
 
 use Exporter 'import';
 our @EXPORT = 'report';

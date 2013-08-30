@@ -1,10 +1,8 @@
 package App::cdelius::Component;
-use strictures 1;
+use Defaults::Modern;
 
 use App::cdelius::Backend;
 use App::cdelius::UI;
-
-use Function::Parameters;
 
 method new_factory ($class: %params) { bless [], $class }
 
