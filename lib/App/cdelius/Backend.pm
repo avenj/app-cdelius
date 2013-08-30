@@ -1,45 +1,56 @@
 package App::cdelius::Backend;
-use App::cdelius::Moops;
+use Defaults::Modern;
 
-class Config :ro {
+package App::cdelius::Backend::Config {
+  use Defaults::Modern;
+  use App::cdelius::Exception;
+  use Moo; 
+  use MooX::late;
 
   has wav_dir => (
+    is        => 'ro',
     isa       => Str,
     default   => sub { '/tmp/cdelius' },
   );
 
   has ffmpeg_path => (
+    is        => 'ro',
     isa       => Str,
     default   => sub { '/usr/bin/ffmpeg' },
   );
 
   has ffmpeg_global_opts => ( 
+    is      => 'ro',
     isa     => Str,
     default => sub { '' },
   );
 
   has ffmpeg_infile_opts => (
+    is      => 'ro',
     isa     => Str,
     default => sub { '' },
   );
 
   has ffmpeg_outfile_opts => (
+    is      => 'ro',
     isa     => Str,
     default => sub { '' },
   );
 
   has cdrecord_path => (
+    is       => 'ro',
     isa      => Str,
     default  => sub { '/usr/bin/cdrecord' },
   );
 
   has cdrecord_opts => (
+    is      => 'ro',
     isa      => Str,
     default  => sub { '-vv -audio -pad speed=16' },
   );
 
   method from_yaml (
-    (Str | Object) :$path
+    (Str | Path) :$path
   ) {
     require YAML::Tiny;
 
@@ -53,7 +64,7 @@ class Config :ro {
   }
 
   method to_yaml (
-    (Str | Object)  :$path,
+    (Str | Path)    :$path,
     (Ref | Undef)   :$data = undef
   ) {
     require YAML::Tiny;
@@ -65,7 +76,7 @@ class Config :ro {
   }
 
   method write_new_config(
-    (Str | Object)  :$path,
+    (Str | Path)    :$path,
     Bool            :$force = 0
   ) {
     $path = path($path) unless blessed $path;
@@ -77,27 +88,34 @@ class Config :ro {
 
 }
 
+package App::cdelius::Backend::Decoder {
+  use Defaults::Modern;
+  use App::cdelius::Exception;
+  use FFmpeg::Command;
+  use Moo; use MooX::late;
 
-class Decoder :ro {
-  
   has ffmpeg => (
-    isa       => Object,
-    coerce    => sub { path($_[0]) },
+    is        => 'ro',
+    isa       => Path,
+    coerce    => 1,
     required  => 1,
   );
 
   has verbose => (
+    is      => 'ro',
     isa     => Bool,
     default => sub { 0 },
   );
 
   has global_opts => (
+    is      => 'ro',
     isa     => ArrayObj,
     coerce  => 1,
     default => sub { [] },
   );
 
   has _ffmpeg_cmd => (
+    is        => 'ro',
     isa       => Object,
     lazy      => 1,
     default   => sub {
@@ -107,13 +125,12 @@ class Decoder :ro {
   );
 
   method decode_track(
-      Object :$input, 
-      Object :$output,
+      Path     :$input,
+      Path     :$output,
       ArrayObj :$infile_opts = array(),
       ArrayObj :$outfile_opts = array()
   ) {
     my $ffm = $self->_ffmpeg_cmd;
-    my $cfg = $self->config;
     my $global_opts = $self->global_opts;
 
     $ffm->global_options( $global_opts->all )   if $global_opts->has_any;
@@ -133,16 +150,20 @@ class Decoder :ro {
 
 }
 
-
-class Burner :ro {
+package App::cdelius::Backend::Burner {
+  use Defaults::Modern;
+  use App::cdelius::Exception;
+  use Moo; use MooX::late;
 
   has cdrecord => (
-    isa      => Object,
-    coerce   => sub { path($_[0]) },
+    is       => 'ro',
+    isa      => Path,
+    coerce   => 1,
     required => 1,
   );
 
   has cdrecord_opts => (
+    is       => 'ro',
     isa      => ArrayObj,
     coerce   => 1,
     required => 1,

@@ -1,10 +1,11 @@
 package App::cdelius::UI;
-use App::cdelius::Moops;
+use Defaults::Modern;
 
-role JSON {
+package App::cdelius::JSONable {
+  use Defaults::Modern;
+  use Moo::Role;
   method TO_JSON {
     my ($self) = @_;
-
     # Lowu hash()es provide a TO_JSON:
     my $data = hash(%$self);
     for my $key ($data->keys->all) {
@@ -12,26 +13,30 @@ role JSON {
       my $val = $data->get($key);
       $data->set($key => "$val") if blessed $val;
     }
-
     $data
   }
 }
 
-class Track with JSON :ro {
-  use Carp 'croak';
+package App::cdelius::UI::Track {
+  use Defaults::Modern;
+  use Moo;
+  use MooX::late;
+  with 'App::cdelius::JSONable';
 
-  has path => (
-    isa       => HasMethods['basename'],
-    coerce    => sub { path($_[0]) },
+  has trackpath => (
+    is        => 'ro',
+    isa       => Path,
+    coerce    => 1,
     required  => 1,
   );
 
   has name => (
+    is        => 'ro',
     isa       => Str,
     lazy      => 1,
     default   => sub { 
       my ($self) = @_;
-      my $base = $self->path->basename;
+      my $base = $self->trackpath->basename;
       $base =~ s/\.[^.]+$//r;
     },
   );
@@ -39,22 +44,29 @@ class Track with JSON :ro {
   ## FIXME can we use FFmpeg to validate / get length...?
 
   method BUILD {
-    $self->path->exists or croak "No such file: ".$self->path
+    $self->trackpath->exists or croak "No such file: ".$self->trackpath
   }
 }
 
+package App::cdelius::UI::TrackList {
+  use Defaults::Modern;
+  use App::cdelius::Exception;
+  use Moo;
+  use MooX::late;
+  with 'App::cdelius::JSONable';
 
-class TrackList with JSON :ro {
-
-  has path => (
-    isa       => Object,
+  has listpath => (
+    is        => 'ro',
+    isa       => Path,
     lazy      => 1,
-    writer    => 'set_path',
-    predicate => 'has_path',
+    writer    => 1,
+    predicate => 1,
+    coerce    => 1,
     default   => sub { '' },
   );
 
   has _tracks => (
+    is        => 'ro',
     isa       => ImmutableArray,
     coerce    => 1,
     default   => sub { [] },
@@ -68,7 +80,7 @@ class TrackList with JSON :ro {
     (Str | Object) :$path
   ) {
     App::cdelius::UI::Track->new(
-      path => $path,
+      trackpath => $path,
     )
   }
 
@@ -143,8 +155,8 @@ class TrackList with JSON :ro {
 
     $path = 
       $path ? path($path)
-      : $self->has_path ? $self->path
-      : report "No 'path =>' specified and no '->path' attrib available";
+      : $self->has_listpath ? $self->listpath
+      : report "No 'path =>' specified and no '->listpath' attrib available";
 
     require JSON::Tiny;
     my $enc = JSON::Tiny->new;
@@ -177,7 +189,7 @@ class TrackList with JSON :ro {
 
     App::cdelius::UI::TrackList->new(
       init_tracks => $tlist,
-      path        => "$path",
+      listpath    => "$path",
     )
   }
 
@@ -210,7 +222,7 @@ class TrackList with JSON :ro {
       my $outfile = "${wav_dir}/${tnum}_${name}.wav";
 
       $total_sz += $decoder->decode_track(
-        input  => path( $track->path ),
+        input  => path( $track->trackpath ),
         output => path( $outfile ),
 
         ( $config->ffmpeg_infile_opts ?
