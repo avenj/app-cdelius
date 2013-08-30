@@ -26,6 +26,7 @@ package App::cdelius::UI::Track {
   has trackpath => (
     is        => 'ro',
     isa       => Path,
+    coerce    => 1,
     required  => 1,
   );
 
@@ -60,6 +61,7 @@ package App::cdelius::UI::TrackList {
     lazy      => 1,
     writer    => 1,
     predicate => 1,
+    coerce    => 1,
     default   => sub { '' },
   );
 
@@ -78,7 +80,7 @@ package App::cdelius::UI::TrackList {
     (Str | Object) :$path
   ) {
     App::cdelius::UI::Track->new(
-      path => $path,
+      trackpath => $path,
     )
   }
 
@@ -220,7 +222,7 @@ package App::cdelius::UI::TrackList {
       my $outfile = "${wav_dir}/${tnum}_${name}.wav";
 
       $total_sz += $decoder->decode_track(
-        input  => path( $track->path ),
+        input  => path( $track->trackpath ),
         output => path( $outfile ),
 
         ( $config->ffmpeg_infile_opts ?

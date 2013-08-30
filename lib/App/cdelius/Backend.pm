@@ -91,8 +91,9 @@ package App::cdelius::Backend::Config {
 package App::cdelius::Backend::Decoder {
   use Defaults::Modern;
   use App::cdelius::Exception;
+  use FFmpeg::Command;
   use Moo; use MooX::late;
-  
+
   has ffmpeg => (
     is        => 'ro',
     isa       => Path,
@@ -130,7 +131,6 @@ package App::cdelius::Backend::Decoder {
       ArrayObj :$outfile_opts = array()
   ) {
     my $ffm = $self->_ffmpeg_cmd;
-    my $cfg = $self->config;
     my $global_opts = $self->global_opts;
 
     $ffm->global_options( $global_opts->all )   if $global_opts->has_any;
@@ -156,12 +156,14 @@ package App::cdelius::Backend::Burner {
   use Moo; use MooX::late;
 
   has cdrecord => (
+    is       => 'ro',
     isa      => Path,
     coerce   => 1,
     required => 1,
   );
 
   has cdrecord_opts => (
+    is       => 'ro',
     isa      => ArrayObj,
     coerce   => 1,
     required => 1,
