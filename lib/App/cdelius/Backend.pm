@@ -126,6 +126,9 @@ class Decoder :ro {
     my $res = $ffm->exec;
     throw $ffm->errstr unless $res;
     say $ffm->stdout if $self->verbose;
+
+    return $output->exists ? $output->stat->size
+      : confess "No output file found at $output"
   }
 
 }

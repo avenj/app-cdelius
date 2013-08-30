@@ -358,14 +358,16 @@ fun cmd_decode
       if ($chld =~ /\.wav$/) {
         $outfh->say(
           ">>> Pre-existing tracks and --force not specified\n",
-          ">>> ($wavdir)"
+          ">>> ($wavdir)",
+        );
         return
       }
     }
   }
 
+  my $total_sz;
   try {
-    app->tracklist->decode(
+    $total_sz = app->tracklist->decode(
             config  => app->config,
       maybe wav_dir => $wavdir,
       maybe verbose => $optmap->{verbose},
@@ -376,8 +378,7 @@ fun cmd_decode
     undef
   } or return;
 
-  $outfh->say("> Decoded to $wavdir");
-  # FIXME report dir size after?
+  $outfh->say("> Decoded to $wavdir, size: $total_sz");
 }
 
 fun cmd_burn

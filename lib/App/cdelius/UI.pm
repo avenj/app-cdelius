@@ -200,13 +200,14 @@ class TrackList with JSON :ro {
     $wav_dir->mkpath unless $wav_dir->exists;
 
     my $tnum = INITIAL_TRACK;
+    my $total_sz = 0;
     for my $track ($self->all) {
       ++$tnum;
 
       my $name    = $track->name;
       my $outfile = "${wav_dir}/${tnum}_${name}.wav";
 
-      $decoder->decode_track(
+      $total_sz += $decoder->decode_track(
         input  => path( $track->path ),
         output => path( $outfile ),
 
@@ -223,7 +224,8 @@ class TrackList with JSON :ro {
 
     }
 
-    $tnum - INITIAL_TRACK
+    my $decoded_ct = $tnum - INITIAL_TRACK;
+    wantarray ? ($decoded_ct, $total_sz) : $total_sz
   }
 
   method burn (
