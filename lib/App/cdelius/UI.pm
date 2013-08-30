@@ -38,8 +38,7 @@ class Track with JSON :ro {
 
   ## FIXME can we use FFmpeg to validate / get length...?
 
-  sub BUILD {
-    my ($self) = @_;
+  method BUILD {
     $self->path->exists or croak "No such file: ".$self->path
   }
 }
