@@ -214,12 +214,12 @@ class TrackList with JSON :ro {
         output => path( $outfile ),
 
         ( $config->ffmpeg_infile_opts ?
-            ( infile_opts => [ split ' ', $config->ffmpeg_infile_opts ] )
+            ( infile_opts => array( split ' ', $config->ffmpeg_infile_opts ) )
             : ()
         ),
 
         ( $config->ffmpeg_outfile_opts ?
-          ( outfile_opts => [ split ' ', $config->ffmpeg_outfile_opts ] )
+          ( outfile_opts => array( split ' ', $config->ffmpeg_outfile_opts ) )
           : ()
         ),
       );
@@ -231,7 +231,7 @@ class TrackList with JSON :ro {
   }
 
   method burn (
-    ConfigObj       :$config,
+    Object          :$config,
     (Str | Object)  :$wav_dir = '',
   ) {
 

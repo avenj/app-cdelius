@@ -6,6 +6,7 @@ use parent 'MoopsX::ListObjects';
 use Path::Tiny ();
 use App::cdelius::Exception ();
 use PerlX::Maybe ();
+use List::Objects::Types ();
 
 sub import {
   push @{ $_[1] ||= [] }, (

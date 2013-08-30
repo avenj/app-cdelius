@@ -5,7 +5,6 @@ use Defaults::Modern;
 use App::cdelius;
 use App::cdelius::Component;
 use App::cdelius::Exception;
-use App::cdelius::Types -all;
 
 my $Opts = +{
   help => sub {
