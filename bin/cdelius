@@ -101,6 +101,9 @@ fun list_is_dirty
 define RET_LIST_DIRTY = -2;
 
 
+$SIG{INT} = sub { $outfh->say(">> Caught Ctrl+C") };
+
+
 PROMPT: while (1) {
   my $prompt = "cd> ";
   my $cmd    = $term->get_reply(
@@ -121,6 +124,8 @@ PROMPT: while (1) {
   }
 }
 
+
+
 fun dispatch (
   Str      $thiscmd,
   HashObj  $optmap,
@@ -140,12 +145,13 @@ fun dispatch (
 }
 
 
-
 fun cmd_q    { goto \&cmd_quit }
 fun cmd_quit 
   (HashObj $optmap, ArrayObj $args) {
 
-    if (list_is_dirty) {
+    $optmap->set(force => 1) if $optmap->get('f');
+
+    if (!$optmap->get('force') && list_is_dirty) {
       my $do_save = $term->ask_yn(
         print_me => ">>> TrackList has unsaved changes",
         prompt => "Save this list before quitting?",
@@ -167,6 +173,8 @@ fun cmd_list
 
     # list
     # list 1 .. 5
+    # list --verbose
+    $optmap->set(verbose => 1) if $optmap->get('v');
 
     my ($start, $end);
     if ($args->has_any) {
@@ -184,7 +192,12 @@ fun cmd_list
 
     for my $track (@tracks) {
       next unless defined $track;
-      $outfh->say(' -> ', $track->name);
+      $outfh->print(
+        ' -> ', $track->name, "\n",
+        ( 
+          $optmap->get('verbose') ? ($track->path, "\n") : ()
+        ),
+      );
     }
 
     1
@@ -344,6 +357,9 @@ fun cmd_save
 fun cmd_decode
   (HashObj $optmap, ArrayObj $args) {
 
+  $optmap->set(verbose => 1) if $optmap->get('v');
+  $optmap->set(force   => 1) if $optmap->get('f');
+
   my $wavdir = path(
     $optmap->{wavdir}
     // $optmap->{wav_dir}
@@ -371,7 +387,7 @@ fun cmd_decode
     $total_sz = app->tracklist->decode(
             config  => app->config,
       maybe wav_dir => $wavdir,
-      maybe verbose => $optmap->{verbose},
+      maybe verbose => $optmap->get('verbose'),
     );
     1
   } catch {
