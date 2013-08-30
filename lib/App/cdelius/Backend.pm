@@ -39,11 +39,11 @@ class Config :ro {
   );
 
   method from_yaml (
-    (Str | PathTiny) :$path
+    (Str | Object) :$path
   ) {
     require YAML::Tiny;
 
-    $path = path("$path") unless is_PathTiny($path);
+    $path = path("$path") unless blessed $path;
     report "No such file $path" unless $path->exists;
 
     my $yml = YAML::Tiny->new->read("$path");
@@ -53,8 +53,8 @@ class Config :ro {
   }
 
   method to_yaml (
-    (Str | PathTiny)  :$path,
-    (Ref | Undef)     :$data = undef
+    (Str | Object)  :$path,
+    (Ref | Undef)   :$data = undef
   ) {
     require YAML::Tiny;
     my $yml = YAML::Tiny->new;
@@ -65,10 +65,10 @@ class Config :ro {
   }
 
   method write_new_config(
-    (Str | PathTiny)  :$path,
-    Bool              :$force = 0
+    (Str | Object)  :$path,
+    Bool            :$force = 0
   ) {
-    $path = path($path) unless is_PathTiny($path);
+    $path = path($path) unless blessed $path;
     report "File already exists at $path" if $path->exists and !$force;
     my $class = blessed($self) || $self;
     my $new = $class->new; 
@@ -81,8 +81,8 @@ class Config :ro {
 class Decoder :ro {
   
   has ffmpeg => (
-    isa       => PathTiny,
-    coerce    => 1,
+    isa       => Object,
+    coerce    => sub { path($_[0]) },
     required  => 1,
   );
 
@@ -107,8 +107,8 @@ class Decoder :ro {
   );
 
   method decode_track(
-      PathTiny :$input, 
-      PathTiny :$output,
+      Object :$input, 
+      Object :$output,
       ArrayObj :$infile_opts = array(),
       ArrayObj :$outfile_opts = array()
   ) {
@@ -137,8 +137,8 @@ class Decoder :ro {
 class Burner :ro {
 
   has cdrecord => (
-    isa      => PathTiny,
-    coerce   => 1,
+    isa      => Object,
+    coerce   => sub { path($_[0]) },
     required => 1,
   );
 
@@ -149,7 +149,7 @@ class Burner :ro {
   );
 
   method burn_cd( $self:
-    PathTiny :$wav_dir
+    Object :$wav_dir
   ) {
     my $cdr  = $self->cdrecord;
     my @opts = split ' ', $self->cdrecord_opts;

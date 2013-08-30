@@ -417,18 +417,23 @@ fun cmd_help
     quit => sub { 
       array(
         ' > quit',
+        ' > quit --force',
+        ' > q',
         '',
         'Exit the application.',
+        'If --force is specified, you will not be prompted to save.',
       )
     },
 
     list => sub { 
       array(
         ' > list',
-        ' > list START .. END',
+        ' > ls START .. END',
+        ' > ls --verbose',
         '',
         'List tracks on current list.',
         'A range can be specified.',
+        'The --verbose flag displays track paths.',
       )
     },
 
@@ -453,8 +458,8 @@ fun cmd_help
     move => sub { 
       array(
         ' > move POSITION NEW_POSITION',
-        ' > move POSITION up',
-        ' > move POSITION down',
+        ' > mv POSITION up',
+        ' > mv POSITION down',
         '',
         'Move the track at POSITION to NEW_POSITION'
           .'or in a specified direction.',

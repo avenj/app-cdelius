@@ -10,7 +10,7 @@ role JSON {
     for my $key ($data->keys->all) {
       # un-bless Path::Tiny objs
       my $val = $data->get($key);
-      $data->set($key => "$val") if is_PathTiny $val;
+      $data->set($key => "$val") if blessed $val;
     }
 
     $data
@@ -21,8 +21,8 @@ class Track with JSON :ro {
   use Carp 'croak';
 
   has path => (
-    isa       => PathTiny,
-    coerce    => 1,
+    isa       => HasMethods['basename'],
+    coerce    => sub { path($_[0]) },
     required  => 1,
   );
 
@@ -47,8 +47,7 @@ class Track with JSON :ro {
 class TrackList with JSON :ro {
 
   has path => (
-    isa       => PathTiny,
-    coerce    => 1,
+    isa       => Object,
     lazy      => 1,
     writer    => 'set_path',
     predicate => 'has_path',
@@ -66,7 +65,7 @@ class TrackList with JSON :ro {
   define INITIAL_TRACK = 1000;
 
   method new_track (
-    (Str | PathTiny) :$path
+    (Str | Object) :$path
   ) {
     App::cdelius::UI::Track->new(
       path => $path,
@@ -158,9 +157,9 @@ class TrackList with JSON :ro {
   }
 
   method load ( $class:
-    (Str | PathTiny) :$path,
+    (Str | Object) :$path,
   ) {
-    $path = path("$path") unless is_PathTiny $path;
+    $path = path("$path") unless blessed $path;
 
     my $json = $path->slurp_utf8;
 
@@ -183,9 +182,9 @@ class TrackList with JSON :ro {
   }
 
   method decode (
-    ConfigObj        :$config,
-    (Str | PathTiny) :$wav_dir = '',
-    Bool             :$verbose = 0
+    Object         :$config,
+    (Str | Object) :$wav_dir = '',
+    Bool           :$verbose = 0
   ) {
 
     my $decoder = App::cdelius::Component->build( 'Backend::Decoder' =>
@@ -232,8 +231,8 @@ class TrackList with JSON :ro {
   }
 
   method burn (
-    ConfigObj         :$config,
-    (Str | PathTiny)  :$wav_dir = '',
+    ConfigObj       :$config,
+    (Str | Object)  :$wav_dir = '',
   ) {
 
     my $splitopts = array( split ' ', $config->cdrecord_opts );
