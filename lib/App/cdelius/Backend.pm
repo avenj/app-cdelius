@@ -44,7 +44,7 @@ class Config :ro {
     require YAML::Tiny;
 
     $path = path("$path") unless is_PathTiny($path);
-    throw "No such file $path" unless $path->exists;
+    report "No such file $path" unless $path->exists;
 
     my $yml = YAML::Tiny->new->read("$path");
 
@@ -69,7 +69,7 @@ class Config :ro {
     Bool              :$force = 0
   ) {
     $path = path($path) unless is_PathTiny($path);
-    throw "File already exists at $path" if $path->exists and !$force;
+    report "File already exists at $path" if $path->exists and !$force;
     my $class = blessed($self) || $self;
     my $new = $class->new; 
     $new->to_yaml(path => $path)
@@ -124,7 +124,7 @@ class Decoder :ro {
     $ffm->output_file("$output");
 
     my $res = $ffm->exec;
-    throw $ffm->errstr unless $res;
+    report $ffm->errstr unless $res;
     say $ffm->stdout if $self->verbose;
 
     return $output->exists ? $output->stat->size
@@ -154,7 +154,7 @@ class Burner :ro {
     my $cdr  = $self->cdrecord;
     my @opts = split ' ', $self->cdrecord_opts;
 
-    throw "No such directory $wav_dir"
+    report "No such directory $wav_dir"
       unless $wav_dir->exists;
 
     my @tracks;
@@ -162,7 +162,7 @@ class Burner :ro {
       push @tracks, $chld if $chld =~ /\.wav$/;
     }
 
-    throw "No files present under $wav_dir"
+    report "No files present under $wav_dir"
       unless @tracks;
 
     system($cdr, @opts, @tracks) 

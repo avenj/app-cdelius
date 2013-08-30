@@ -183,6 +183,7 @@ fun cmd_list
     @tracks = defined $end ? @tracks[$start .. $end] : @tracks;
 
     for my $track (@tracks) {
+      next unless defined $track;
       $outfh->say(' -> ', $track->name);
     }
 
@@ -207,8 +208,8 @@ fun cmd_add
       } or return;
 
       if ($args->count == 2) {
-        my $added_to_pos = try {
-          app->tracklist->add_track(
+        my $added_to_pos; try {
+          $added_to_pos = app->tracklist->add_track(
             track    => $track,
             position => $args->get(1)
           );

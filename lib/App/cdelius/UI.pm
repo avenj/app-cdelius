@@ -86,7 +86,7 @@ class TrackList with JSON :ro {
   }
 
   method add_track (
-    TrackObj      :$track,
+    Object        :$track,
     (Int | Undef) :$position = undef
   ) {
     my $tlist = array( $self->_tracks->all );
@@ -96,11 +96,11 @@ class TrackList with JSON :ro {
       return $tlist->count - 1
     }
 
-    throw "Destination index $position cannot be negative"
+    report "Destination index $position cannot be negative"
       unless $position >= 0;
 
     my $last_pos = $self->_tracks->has_any ? $self->_tracks->count -1 : 0;
-    throw "Destination index $position beyond end of list"
+    report "Destination index $position beyond end of list"
       if $position > $last_pos;
 
     $tlist->splice( $position, 0, $track );
@@ -114,7 +114,7 @@ class TrackList with JSON :ro {
 
   method del_track (Int :$position) {
     my $track = $self->get_track(position => $position)
-      or throw "No such track: $position";
+      or report "No such track: $position";
 
     $self->_set_tracks(
       $self->_tracks->sliced( 
@@ -127,10 +127,10 @@ class TrackList with JSON :ro {
 
   method move_track (Int :$from_index, Int :$to_index) {
     my $last_pos = $self->_tracks->has_any ? $self->_tracks->count - 1 : 0;
-    throw "Destination index $to_index beyond end of list"
+    report "Destination index $to_index beyond end of list"
       if $to_index > $last_pos;
     my $track = $self->del_track(position => $from_index);
-    throw "No track found at index $from_index"
+    report "No track found at index $from_index"
       unless $track;
     $self->add_track(track => $track, position => $to_index)
   }
@@ -142,13 +142,13 @@ class TrackList with JSON :ro {
     $path = 
       $path ? path($path)
       : $self->has_path ? $self->path
-      : throw "No 'path =>' specified and no '->path' attrib available";
+      : report "No 'path =>' specified and no '->path' attrib available";
 
     require JSON::Tiny;
     my $enc = JSON::Tiny->new;
     my $json;
     unless ($json = $enc->encode($self)) {
-      throw "JSON encoding failed; ".$enc->error
+      report "JSON encoding failed; ".$enc->error
     }
 
     $path->spew_utf8($json);
@@ -165,12 +165,12 @@ class TrackList with JSON :ro {
     my $enc = JSON::Tiny->new;
     my $data;
     unless ($data = $enc->decode($json)) {
-      throw "JSON decoding failed; ".$enc->error
+      report "JSON decoding failed; ".$enc->error
     }
     
     my $tlist = delete $data->{_tracks};
     unless (is_ArrayRef $tlist) {
-      throw "Expected tracklist to be an ARRAY but got $tlist"
+      report "Expected tracklist to be an ARRAY but got $tlist"
     }
 
     App::cdelius::UI::TrackList->new(
@@ -234,7 +234,7 @@ class TrackList with JSON :ro {
   ) {
 
     my $splitopts = array( split ' ', $config->cdrecord_opts );
-    throw "Missing cdrecord_opts" unless $splitopts->has_any;
+    report "Missing cdrecord_opts" unless $splitopts->has_any;
     warn  "cdrecord_opts missing '-audio' flag"
       unless $splitopts->has_any(sub { $_ eq '-audio' });
     

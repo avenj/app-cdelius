@@ -2,8 +2,8 @@ package App::cdelius::Exception;
 use strictures 1;
 
 use Exporter 'import';
-our @EXPORT = 'throw';
-sub throw {
+our @EXPORT = 'report';
+sub report {
   __PACKAGE__->throw(@_)
 }
 

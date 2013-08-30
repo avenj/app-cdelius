@@ -2,7 +2,11 @@ package App::cdelius::Moops;
 use strictures 1;
 
 use parent 'MoopsX::ListObjects';
+
 use Path::Tiny ();
+use App::cdelius::Types ();
+use App::cdelius::Exception ();
+use PerlX::Maybe ();
 
 sub import {
   push @{ $_[1] ||= [] }, (
@@ -10,7 +14,7 @@ sub import {
     'PerlX::Maybe'            => [ 'maybe', 'provided' ],
 
     'App::cdelius::Types'     => [ -all ],
-    'App::cdelius::Exception' => [ 'throw' ],
+    'App::cdelius::Exception' => [ 'report' ],
   );
   goto \&MoopsX::ListObjects::import
 }
