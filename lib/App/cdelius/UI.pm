@@ -93,6 +93,9 @@ class TrackList with JSON :ro {
 
     unless (defined $position) {
       $tlist->push( $track );
+      $self->_set_tracks(
+        immarray( $tlist->all )
+      );
       return $tlist->count - 1
     }
 
