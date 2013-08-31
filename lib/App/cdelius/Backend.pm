@@ -170,7 +170,7 @@ package App::cdelius::Backend::Burner {
   );
 
   method burn_cd( $self:
-    Object :$wav_dir
+    Path :$wav_dir
   ) {
     my $cdr  = $self->cdrecord;
     my @opts = split ' ', $self->cdrecord_opts;
