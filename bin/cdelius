@@ -8,9 +8,19 @@ use App::cdelius::Exception;
 
 my $Opts = +{
   help => sub {
+    print(
+      "App::cdelius\n\n",
+      "   --config=CONF_PATH\n\n",
+      "   --help\n",
+      "   --version\n",
+    );
+    exit 0
   },
 
   version => sub {
+    my $vers = $App::cdelius::VERSION || 'git';
+    say "App::cdelius version: $vers";
+    exit 0
   },
 
   config  => do {
@@ -56,6 +66,7 @@ $outfh->autoflush(1);
 
 $outfh->say("Welcome to cdelius!");
 $outfh->say(' (readline: ', $term->ReadLine, ')');
+$outfh->say(' (cfg: ', getopts->config, ')');
 
 unless (-e getopts->config) {
   my $should_create = $term->ask_yn(
@@ -272,6 +283,7 @@ fun cmd_delete
 
     try {
       app->tracklist->del_track(position => $from);
+      $outfh->say("> Deleted track ", $from);
     } catch {
       $outfh->say(">> Backend reported error: $_");
       undef
@@ -367,19 +379,21 @@ fun cmd_decode
     // app->config->wav_dir
   );
 
-  if (
-    !$optmap->get('force')
-    && $wavdir->exists 
-    && (my @files = $wavdir->children)
-  ) {
+  if ( $wavdir->exists && (my @files = $wavdir->children) ) {
     for my $chld (@files) {
+
       if ($chld =~ /\.wav$/) {
-        $outfh->say(
-          ">>> Pre-existing tracks and --force not specified\n",
-          ">>> ($wavdir)",
-        );
-        return
+        if ($optmap->get('force')) {
+          $chld->remove
+        } else {
+          $outfh->say(
+            ">>> Pre-existing tracks and --force not specified\n",
+            ">>> ($wavdir)",
+          );
+          return
+        }
       }
+
     }
   }
 
@@ -411,7 +425,6 @@ fun cmd_h    { goto \&cmd_help }
 fun cmd_help
   (HashObj $optmap, ArrayObj $args) {
 
-  # FIXME help items + default
   state $help_for = hash(
     quit => sub { 
       array(
@@ -468,6 +481,24 @@ fun cmd_help
     load => sub { array() },
 
     save => sub { array() },
+
+    decode => sub {
+      array(
+        ' > decode',
+        ' > decode --wavdir=/path/to/wavdir',
+        ' > decode --force',
+        '',
+        'Decode the current tracklist.',
+        'If the --force option is specified, the wavdir is cleaned first.',
+      )
+    },
+
+    burn  => sub {
+      ' > burn',
+      ' > burn --wavdir=/path/to/wavdir',
+      '',
+      'Burn the current tracklist.',
+    },
   );
 
   my $help;
