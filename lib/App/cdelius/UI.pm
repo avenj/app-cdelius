@@ -77,7 +77,7 @@ package App::cdelius::UI::TrackList {
   define INITIAL_TRACK = 1000;
 
   method new_track (
-    (Str | Object) :$path
+    (Str | Path) :$path
   ) {
     App::cdelius::UI::Track->new(
       trackpath => $path,
@@ -169,7 +169,7 @@ package App::cdelius::UI::TrackList {
   }
 
   method load ( $class:
-    (Str | Object) :$path,
+    (Str | Path) :$path,
   ) {
     $path = path("$path") unless blessed $path;
 
@@ -195,7 +195,7 @@ package App::cdelius::UI::TrackList {
 
   method decode (
     Object         :$config,
-    (Str | Object) :$wav_dir = '',
+    (Str | Path)   :$wav_dir = '',
     Bool           :$verbose = 0
   ) {
 
@@ -244,7 +244,7 @@ package App::cdelius::UI::TrackList {
 
   method burn (
     Object          :$config,
-    (Str | Object)  :$wav_dir = '',
+    (Str | Path)    :$wav_dir = '',
   ) {
 
     my $splitopts = array( split ' ', $config->cdrecord_opts );
