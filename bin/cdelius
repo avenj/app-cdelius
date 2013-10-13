@@ -353,15 +353,16 @@ fun cmd_move
 
 fun cmd_load 
   (HashObj $optmap, ArrayObj $args) {
-  # load $tlist_path
-  # FIXME default to tracklist->listpath if we have one?
+  
+  my $tlist_path = 
+    $args->has_any ? $args->get(0)
+    : app->tracklist->has_listpath ? app->tracklist->listpath 
+    : ();
 
-  unless ($args->count == 1) {
-    $outfh->say(">> Expected 1 arg but got ".$args->count, "\n");
+  unless ($tlist_path) {
+    $outfh->say(">> Expected a source path to load\n");
     return dispatch( help => hash, array('load') )
   }
-
-  my ($tlist_path) = $args->all;
 
   if (list_is_dirty) {
     my $continue = $term->ask_yn(
@@ -398,17 +399,37 @@ fun cmd_load
     undef
   } or return;
 
-  $outfh->say("> Loaded tracklist ($tlist_path)");
+  $outfh->say("> Loaded TrackList ($tlist_path)");
 
   RET_LIST_DIRTY
 }
 
 fun cmd_save
   (HashObj $optmap, ArrayObj $args) {
-  # FIXME syntax:
-  #   save (prompt if no tracklist->listpath)
-  #   save $path
-  # FIXME set list_is_dirty(0)
+
+  my $tlist_path =
+    $args->has_any ? $args->get(0)
+    : app->tracklist->has_listpath ? app->tracklist->listpath
+    : ();
+
+  unless ($tlist_path) {
+    $outfh->say(">> Expected a destination path\n");
+    return dispatch( help => hash, array('save') )
+  }
+
+  try {
+    app->tracklist->save(
+      path => $tlist_path,
+    );
+    1
+  } catch {
+    $outfh->say(">>> Backend reported error ($tlist_path): $_");
+    undef
+  } or return;
+
+  list_is_dirty(0);
+
+  $outfh->say("> Saved TrackList ($tlist_path)");
 }
 
 fun cmd_decode
