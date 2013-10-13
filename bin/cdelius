@@ -159,204 +159,226 @@ fun cmd_q    { goto \&cmd_quit }
 fun cmd_quit 
   (HashObj $optmap, ArrayObj $args) {
 
-    $optmap->set(force => 1) if $optmap->get('f');
+  $optmap->set(force => 1) if $optmap->get('f');
 
-    if (!$optmap->get('force') && list_is_dirty) {
-      my $do_save = $term->ask_yn(
-        print_me => ">>> TrackList has unsaved changes",
-        prompt => "Save this list before quitting?",
-        default => 'y',
-      );
+  if (!$optmap->get('force') && list_is_dirty) {
+    my $do_save = $term->ask_yn(
+      print_me => ">>> TrackList has unsaved changes",
+      prompt   => "Save this list before quitting?",
+      default  => 'y',
+    );
 
-      if ($do_save) {
-        dispatch( save => hash, array )
-      }
+    if ($do_save) {
+      dispatch( save => hash, array )
     }
+  }
 
-    $outfh->say("<< Goodbye!");
+  $outfh->say("<< Goodbye!");
 
-    exit 0
+  exit 0
 }
 
 fun cmd_ls   { goto \&cmd_list }
 fun cmd_list 
   (HashObj $optmap, ArrayObj $args) {
 
-    # list
-    # list 1 .. 5
-    # list --verbose
-    $optmap->set(verbose => 1) if $optmap->get('v');
+  # list
+  # list 1 .. 5
+  # list --verbose
+  $optmap->set(verbose => 1) if $optmap->get('v');
 
-    my ($start, $end);
-    if ($args->has_any) {
-      my $range = $args->grep(sub { is_Int $_ });
-      unless ($range->count == 2) {
-        $outfh->say(">> Expected start/end Ints");
-        return dispatch( help => hash, array('list') )
-      }
-
-      ($start, $end) = $range->all;
-    }
-  
-    my @tracks = app->tracklist->all;
-    @tracks = defined $end ? @tracks[$start .. $end] : @tracks;
-
-    for my $track (@tracks) {
-      next unless defined $track;
-      $outfh->print(
-        ' -> ', $track->name, "\n",
-        ( 
-          $optmap->get('verbose') ? ($track->trackpath, "\n") : ()
-        ),
-      );
+  my ($start, $end);
+  if ($args->has_any) {
+    my $range = $args->grep(sub { is_Int $_ });
+    unless ($range->count == 2) {
+      $outfh->say(">> Expected start/end Ints");
+      return dispatch( help => hash, array('list') )
     }
 
-    1
+    ($start, $end) = $range->all;
+  }
+
+  my @tracks = app->tracklist->all;
+  @tracks = defined $end ? @tracks[$start .. $end] : @tracks;
+
+  for my $track (@tracks) {
+    next unless defined $track;
+    $outfh->print(
+      ' -> ', $track->name, "\n",
+      ( 
+        $optmap->get('verbose') ? ($track->trackpath, "\n") : ()
+      ),
+    );
+  }
+
+  1
 }
 
 fun cmd_add
   (HashObj $optmap, ArrayObj $args) {
-    # add $path
-    # add $path $index
+  # add $path
+  # add $path $index
 
-    unless ($args->has_any) {
-      return dispatch( help => hash, array('add') )
-    }
+  unless ($args->has_any) {
+    return dispatch( help => hash, array('add') )
+  }
 
-    if ($args->count == 1 || $args->count == 2) {
-      my $track = try {
-        app->tracklist->new_track( path => $args->get(0) );
+  if ($args->count == 1 || $args->count == 2) {
+    my $track = try {
+      app->tracklist->new_track( path => $args->get(0) );
+    } catch {
+      $outfh->say(">> Backend reported error: $_");
+      undef
+    } or return;
+
+    if ($args->count == 2) {
+      my $added_to_pos; try {
+        $added_to_pos = app->tracklist->add_track(
+          track    => $track,
+          position => $args->get(1)
+        );
       } catch {
-        $outfh->say(">> Backend reported error: $_");
-        undef
-      } or return;
-
-      if ($args->count == 2) {
-        my $added_to_pos; try {
-          $added_to_pos = app->tracklist->add_track(
-            track    => $track,
-            position => $args->get(1)
-          );
-        } catch {
-          $outfh->say(">> Backend reported error: $_"); 
-          undef
-        };
-        return unless defined $added_to_pos;
-        $outfh->say("> Successfully added track ", $added_to_pos);
-        return RET_LIST_DIRTY
-      }
-
-      my $added_to_pos = try {
-        app->tracklist->add_track(
-          track => $track
-        )
-      } catch {
-        $outfh->say(">> Backend reported error: $_");
+        $outfh->say(">> Backend reported error: $_"); 
         undef
       };
       return unless defined $added_to_pos;
       $outfh->say("> Successfully added track ", $added_to_pos);
       return RET_LIST_DIRTY
-    } else {
-      $outfh->say(">> Expected 1 or 2 args but got ".$args->count, "\n");
-      return
     }
+
+    my $added_to_pos = try {
+      app->tracklist->add_track(
+        track => $track
+      )
+    } catch {
+      $outfh->say(">> Backend reported error: $_");
+      undef
+    };
+    return unless defined $added_to_pos;
+    $outfh->say("> Successfully added track ", $added_to_pos);
+    return RET_LIST_DIRTY
+  } else {
+    $outfh->say(">> Expected 1 or 2 args but got ".$args->count, "\n");
+    return
+  }
 }
 
 fun cmd_del    { goto \&cmd_delete }
 fun cmd_delete
   (HashObj $optmap, ArrayObj $args) {
 
-    # del $index 
+  # del $index 
 
-    unless ($args->count == 1) {
-      $outfh->say(">> Expected 1 arg but got ".$args->count, "\n");
-      return dispatch( help => hash, array('del') )
-    }
+  unless ($args->count == 1) {
+    $outfh->say(">> Expected 1 arg but got ".$args->count, "\n");
+    return dispatch( help => hash, array('del') )
+  }
 
-    my $from = $args->head;
+  my $from = $args->head;
 
-    unless ( is_Int $from ) {
-      $outfh->say(">> Expected index Int but got $from");
-      return
-    }
+  unless ( is_Int $from ) {
+    $outfh->say(">> Expected index Int but got $from");
+    return
+  }
 
-    try {
-      app->tracklist->del_track(position => $from);
-      $outfh->say("> Deleted track ", $from);
-    } catch {
-      $outfh->say(">> Backend reported error: $_");
-      undef
-    } or return;
+  try {
+    app->tracklist->del_track(position => $from);
+    $outfh->say("> Deleted track ", $from);
+  } catch {
+    $outfh->say(">> Backend reported error: $_");
+    undef
+  } or return;
 
-    RET_LIST_DIRTY
+  RET_LIST_DIRTY
 }
 
 fun cmd_mv   { goto \&cmd_move }
 fun cmd_move
   (HashObj $optmap, ArrayObj $args) {
 
-    # move $from $to
-    # move $from up
-    # move $from down
+  # move $from $to
+  # move $from up
+  # move $from down
 
-    unless ($args->count == 2) {
-      $outfh->say(">> Expected 2 args but got ".$args->count, "\n");
-      return dispatch( help => hash, array('move') )
-    }
+  unless ($args->count == 2) {
+    $outfh->say(">> Expected 2 args but got ".$args->count, "\n");
+    return dispatch( help => hash, array('move') )
+  }
 
-    my ($from, $to) = $args->all;
+  my ($from, $to) = $args->all;
 
-    unless ( is_Int $from ) {
-      $outfh->say(">> Expected index Int but got $from");
-      return
-    }
+  unless ( is_Int $from ) {
+    $outfh->say(">> Expected index Int but got $from");
+    return
+  }
 
-    unless ( $from >= 0 && app->tracklist->get_track($from) ) {
-      $outfh->say(">> No such track: $from");
-      return
-    }
+  unless ( $from >= 0 && app->tracklist->get_track($from) ) {
+    $outfh->say(">> No such track: $from");
+    return
+  }
 
-    if ($to eq 'up') {
-      my $target_pos = $from - 1;
-      $target_pos    = 0 if $target_pos <= 0;
+  if ($to eq 'up') {
+    my $target_pos = $from - 1;
+    $target_pos    = 0 if $target_pos <= 0;
+    app->tracklist->move_track(
+      from_index => $from,
+      to_index   => $target_pos
+    )
+  } elsif ($to eq 'down') {
+    my $target_pos = $from + 1;
+    my $last_pos   = array(app->tracklist->all)->count - 1;
+    $target_pos    = $last_pos if $target_pos > $last_pos;
+    app->tracklist->move_track(
+      from_index => $from,
+      to_index   => $target_pos,
+    )
+  } elsif (is_Int $to) {
+    try {
       app->tracklist->move_track(
         from_index => $from,
-        to_index   => $target_pos
-      )
-    } elsif ($to eq 'down') {
-      my $target_pos = $from + 1;
-      my $last_pos   = array(app->tracklist->all)->count - 1;
-      $target_pos    = $last_pos if $target_pos > $last_pos;
-      app->tracklist->move_track(
-        from_index => $from,
-        to_index   => $target_pos,
-      )
-    } elsif (is_Int $to) {
-      try {
-        app->tracklist->move_track(
-          from_index => $from,
-          to_index   => $to
-        );
-        1
-      } catch {
-        $outfh->say(">> Backend reported error: $_");
-        undef
-      } or return;
-    } else {
-      $outfh->say(">> Unknown parameter $to");
-      return dispatch( help => hash, array('move') )
-    }
+        to_index   => $to
+      );
+      1
+    } catch {
+      $outfh->say(">> Backend reported error: $_");
+      undef
+    } or return;
+  } else {
+    $outfh->say(">> Unknown parameter $to");
+    return dispatch( help => hash, array('move') )
+  }
 
-    RET_LIST_DIRTY
+  RET_LIST_DIRTY
 }
 
 fun cmd_load 
   (HashObj $optmap, ArrayObj $args) {
-  # FIXME syntax:
-  #   load $tlist_path
-  # FIXME create new app($obj)
-  # FIXME warn/prompt if list_is_dirty
+  # load $tlist_path
+  # FIXME default to tracklist->listpath if we have one?
+
+  unless ($args->count == 1)
+    $outfh->say(">> Expected 1 arg but got ".$args->count, "\n");
+    return dispatch( help => hash, array('load') )
+  }
+
+  my ($tlist_path) = $args->all;
+
+  if (list_is_dirty) {
+    my $continue = $term->ask_yn(
+      print_me => ">>> Current TrackList has unsaved changes",
+      prompt   => "Continue anyway?",
+      default  => 'n',
+    );
+
+    unless ($continue) {
+      $outfh->say(">> Skipping load.");
+      return
+    }
+  }
+
+# FIXME create new app($obj)
+
+  RET_LIST_DIRTY
 }
 
 fun cmd_save
@@ -380,21 +402,15 @@ fun cmd_decode
   );
 
   if ( $wavdir->exists && (my @files = $wavdir->children) ) {
-    for my $chld (@files) {
-
-      if ($chld =~ /\.wav$/) {
-        if ($optmap->get('force')) {
-          $chld->remove
-        } else {
-          $outfh->say(
-            ">>> Pre-existing tracks and --force not specified\n",
-            ">>> ($wavdir)",
-          );
-          return
-        }
-      }
-
-    }
+    array(@files)
+      ->grep(sub { /\.wav$/ })
+      ->map(sub {
+          $optmap->get('force') ? $_->remove
+          : $outfh->say(
+              ">>> Preexisting tracks and --force not specified\n",
+              ">>>  ($wavdir)"
+            ) and return;
+        })
   }
 
   my $total_sz;
@@ -441,7 +457,7 @@ fun cmd_burn
 
   try {
     app->tracklist->burn(
-            config => app->config,
+            config  => app->config,
       maybe wav_dir => $wavdir,
     );
     1
