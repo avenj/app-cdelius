@@ -27,8 +27,6 @@ my $Opts = +{
     $ENV{HOME} ? $ENV{HOME} .'/.cdeliusrc'
       : 'cdeliusrc';
     },
-
-  nocolor => 0,
 };
 
 use Getopt::Long;
@@ -38,8 +36,6 @@ GetOptions( $Opts,
     version
 
     config=s
-
-    nocolor=i
   /,
 );
 
@@ -196,6 +192,10 @@ fun cmd_list
     }
 
     ($start, $end) = $range->all;
+  }
+
+  if (app->tracklist->has_listpath && (my $lpath = app->tracklist->listpath)) {
+    $outfh->say("[$lpath]\n");
   }
 
   my @tracks = app->tracklist->all;
@@ -572,9 +572,25 @@ fun cmd_help
       )
     },
 
-    load => sub { array() },
+    load => sub { 
+      array(
+        ' > load',
+        ' > load /path/to/tracklist',
+        '',
+        'Load a tracklist from disk.',
+        'If the current tracklist has a path attached, a reload is attempted.',
+      ) 
+    },
 
-    save => sub { array() },
+    save => sub { 
+      array(
+        ' > save',
+        ' > save /path/to/tracklist',
+        '',
+        'Save the current tracklist to disk.',
+        'The path is optional if the current tracklist has a path attached.',
+      ) 
+    },
 
     decode => sub {
       array(

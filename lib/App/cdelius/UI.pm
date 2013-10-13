@@ -143,9 +143,11 @@ package App::cdelius::UI::TrackList {
     my $last_pos = $self->_tracks->has_any ? $self->_tracks->count - 1 : 0;
     report "Destination index $to_index beyond end of list"
       if $to_index > $last_pos;
+
     my $track = $self->del_track(position => $from_index);
     report "No track found at index $from_index"
       unless $track;
+
     $self->add_track(track => $track, position => $to_index)
   }
 
