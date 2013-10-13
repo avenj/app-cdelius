@@ -356,7 +356,7 @@ fun cmd_load
   # load $tlist_path
   # FIXME default to tracklist->listpath if we have one?
 
-  unless ($args->count == 1)
+  unless ($args->count == 1) {
     $outfh->say(">> Expected 1 arg but got ".$args->count, "\n");
     return dispatch( help => hash, array('load') )
   }
@@ -371,12 +371,34 @@ fun cmd_load
     );
 
     unless ($continue) {
-      $outfh->say(">> Skipping load.");
+      $outfh->say(">> Skipping TrackList load.");
       return
     }
   }
 
-# FIXME create new app($obj)
+  my $newlist;
+  try {
+    $newlist = app->tracklist->load(
+      path => $tlist_path,
+    )
+  } catch {
+    $outfh->say(">>> Backend reported error ($tlist_path): $_");
+    undef
+  } or return;
+
+  try {
+    app(
+      App::cdelius->new(
+        config_file_path  => getopts->config,
+        tracklist         => $newlist,
+      )
+    )
+  } catch {
+    $outfh->say(">>> Failed to create new app object: $_");
+    undef
+  } or return;
+
+  $outfh->say("> Loaded tracklist ($tlist_path)");
 
   RET_LIST_DIRTY
 }
@@ -405,11 +427,12 @@ fun cmd_decode
     array(@files)
       ->grep(sub { /\.wav$/ })
       ->map(sub {
-          $optmap->get('force') ? $_->remove
-          : $outfh->say(
+          $optmap->get('force') ? $_->remove : (
+            $outfh->say(
               ">>> Preexisting tracks and --force not specified\n",
               ">>>  ($wavdir)"
-            ) and return;
+            ) and return 
+          )
         })
   }
 
